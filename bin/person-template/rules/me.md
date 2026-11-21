@@ -1,0 +1,1 @@
+- **me**: When a ticket, commit, chat or document names {{me}} (add the other names and handles you go by): that is me, the person you work for; address me as "you".

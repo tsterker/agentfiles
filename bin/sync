@@ -1,0 +1,195 @@
+#!/bin/bash
+# Puts this repo's skills and rules in place for Claude Code, Codex and Cursor, for one person.
+# Usage: bin/sync [--me <name>] [--clean]
+set -euo pipefail
+
+die() { echo "sync: $*" >&2; exit 1; }
+command -v git >/dev/null || die "needs git on PATH; found none"
+
+REPO=$(cd "$(dirname "$0")/.." && pwd -P)
+CACHE=$HOME/.cache/agentfiles
+SKILL_DIRS="$HOME/.claude/skills $HOME/.agents/skills"
+RULE_DIR=$HOME/.claude/rules
+TAB=$(printf '\t')
+ME= CLEAN=
+
+while [ $# -gt 0 ]; do
+  case $1 in
+    --me) [ $# -ge 2 ] || die "--me needs a name"; ME=$2; shift 2 ;;
+    --clean) CLEAN=1; shift ;;
+    *) die "unknown argument '$1'; expected --me <name> or --clean" ;;
+  esac
+done
+
+# --- Who am I -------------------------------------------------------------
+if [ -n "$ME" ]; then
+  case $ME in *[!a-z0-9._-]*) die "--me takes a name of a-z, 0-9, '.', '_' and '-'; got '$ME'" ;; esac
+  echo "$ME" > "$REPO/.me"
+  if [ ! -d "$REPO/people/$ME" ]; then
+    cp -R "$REPO/bin/person-template" "$REPO/people/$ME"
+    sed "s/{{me}}/$ME/g" "$REPO/bin/person-template/rules/me.md" > "$REPO/people/$ME/rules/me.md"
+    echo "Created people/$ME/. Make rules/me.md yours: add the names you go by."
+  fi
+elif [ -f "$REPO/.me" ]; then
+  ME=$(cat "$REPO/.me")
+else
+  die "who are you? Run bin/sync --me <name> once"
+fi
+MINE=$REPO/people/$ME
+[ -d "$MINE" ] || die "expected your folder people/$ME/; it's missing. Run bin/sync --me $ME to create it"
+
+# Lines of a list file, without comments and blank lines.
+lines() { [ -f "$1" ] || return 0; sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$1" | grep -v -e '^#' -e '^$' || true; }
+
+# --- Upstream: copy each upstream.txt line into upstream/ -----------------
+bake() {
+  local dir=$1 out=$1/upstream sources=$1/upstream/sources.txt new
+  new=$(mktemp)
+  lines "$dir/upstream.txt" | while IFS= read -r line; do
+    case $line in
+      */-/tree/*) repo=${line%%/-/tree/*}; rest=${line#*/-/tree/} ;;
+      */tree/*)   repo=${line%%/tree/*};   rest=${line#*/tree/} ;;
+      *)          repo=$line;              rest= ;;
+    esac
+    ref=${rest%%/*} sub=
+    case $rest in */*) sub=${rest#*/} ;; esac
+    slug=$(echo "$repo" | sed -e 's|^[a-z+]*://||' -e 's|^[^/]*@||' -e 's|:|/|' -e 's|\.git$||')
+    [ -z "$sub" ] || slug=$slug/$sub
+
+    old=$( [ -f "$sources" ] && awk -v l="$line" '$3 == l' "$sources" || true )
+    if [ -n "$old" ] && [ -d "$out/$slug" ]; then echo "$old" >> "$new"; continue; fi
+
+    tmp=$(mktemp -d)
+    git -C "$tmp" init -q
+    git -C "$tmp" fetch -q --depth 1 "$repo" "${ref:-HEAD}" || die "can't fetch '${ref:-HEAD}' from $repo (${dir#$REPO/}/upstream.txt); a ref containing '/' isn't supported, use a tag or sha"
+    git -C "$tmp" checkout -q FETCH_HEAD
+    [ -d "$tmp/$sub" ] || die "no folder '$sub' at '$ref' in $repo; a ref containing '/' isn't supported, use a tag or sha"
+    find "$tmp/$sub" -name SKILL.md -not -path '*/.git/*' | grep -q . || die "no SKILL.md under $line"
+    rm -rf "${out:?}/$slug" && mkdir -p "$out/$slug"
+    (cd "$tmp/$sub" && tar --exclude .git -cf - .) | (cd "$out/$slug" && tar -xf -)
+    echo "$slug $(git -C "$tmp" rev-parse HEAD) $line" >> "$new"
+    rm -rf "$tmp"
+    echo "Copied $line into ${out#$REPO/}/$slug; commit it."
+  done
+  if [ -f "$sources" ]; then   # drop copies whose line is gone
+    awk '{print $1}' "$sources" | while IFS= read -r slug; do
+      awk -v s="$slug" '$1 == s {f = 1} END {exit !f}' "$new" || { rm -rf "${out:?}/$slug"; echo "Removed ${out#$REPO/}/$slug; commit it."; }
+    done
+  fi
+  if [ -s "$new" ]; then mv "$new" "$sources"; else rm -f "$new" "$sources"; fi
+  [ ! -d "$out" ] || find "$out" -type d -empty -delete
+}
+bake "$REPO/shared"
+bake "$MINE"
+
+# --- Which skills I get: name, folder, where from -------------------------
+WANT=$(mktemp)
+add_skills() {
+  [ -d "$1" ] || return 0
+  find "$1" -name SKILL.md -not -path '*/.git/*' | while IFS= read -r f; do
+    d=$(dirname "$f"); echo "$(basename "$d")$TAB$d$TAB$2"
+  done >> "$WANT"
+}
+add_skills "$REPO/shared/skills" shared/skills
+add_skills "$REPO/shared/upstream" shared/upstream
+add_skills "$MINE/skills" "people/$ME/skills"
+add_skills "$MINE/upstream" "people/$ME/upstream"
+
+lines "$MINE/opt-in.txt" | while IFS= read -r line; do
+  case $line in
+    "~/"*|/*|.*)
+      case $line in "~/"*) p=$HOME/${line#"~/"} ;; /*) p=$line ;; *) p=$MINE/$line ;; esac
+      [ -d "$p" ] || die "opt-in.txt: no folder $p"
+      add_skills "$p" "$line" ;;
+    */*)
+      person=${line%%/*} skill=${line#*/}
+      [ -d "$REPO/people/$person/skills" ] || die "opt-in.txt: '$line' expects people/$person/skills/; it's missing"
+      if [ "$skill" = '*' ]; then add_skills "$REPO/people/$person/skills" "$line"; continue; fi
+      found=$(find "$REPO/people/$person/skills" -path "*/$skill/SKILL.md" | wc -l | tr -d ' ')
+      [ "$found" = 1 ] || die "opt-in.txt: '$line' expects one skill '$skill' in people/$person/skills/; found $found"
+      add_skills "$(dirname "$(find "$REPO/people/$person/skills" -path "*/$skill/SKILL.md")")" "$line" ;;
+    *) die "opt-in.txt: '$line' is neither <person>/<skill>, <person>/* nor a folder path" ;;
+  esac
+done
+
+lines "$MINE/off.txt" | while IFS= read -r name; do
+  cut -f1 "$WANT" | grep -qx "$name" || die "off.txt: '$name' is no skill you'd get"
+done
+OFF=$(lines "$MINE/off.txt")
+SKILLS=$(mktemp)
+awk -F"$TAB" -v off="$OFF" '
+  BEGIN { n = split(off, o, "\n"); for (i = 1; i <= n; i++) skip[o[i]] = 1 }
+  skip[$1] { next }
+  ($1 in dir) && dir[$1] != $2 { print "sync: two skills named " $1 ": from " from[$1] " and " $3 > "/dev/stderr"; bad = 1 }
+  !($1 in dir) { dir[$1] = $2; from[$1] = $3; print $1 "\t" $2 }
+  END { exit bad }' "$WANT" > "$SKILLS" || exit 1
+
+RULES=$(mktemp)   # link name, file
+for f in "$REPO"/shared/rules/*.md; do if [ -f "$f" ]; then echo "agentfiles-shared-$(basename "$f")$TAB$f"; fi; done >> "$RULES"
+for f in "$MINE"/rules/*.md; do if [ -f "$f" ]; then echo "agentfiles-$ME-$(basename "$f")$TAB$f"; fi; done >> "$RULES"
+
+# --- Links: sync owns the links it made, and only those -------------------
+mkdir -p "$CACHE" $SKILL_DIRS "$RULE_DIR"
+touch "$CACHE/links"
+ours() { [ -L "$1" ] && { grep -qxF "$1" "$CACHE/links" || case $(readlink "$1") in "$REPO"/*) true ;; *) false ;; esac; }; }
+
+LINKS=$(mktemp)   # path, target
+for d in $SKILL_DIRS; do awk -F"$TAB" -v d="$d" '{print d "/" $1 "\t" $2}' "$SKILLS"; done >> "$LINKS"
+awk -F"$TAB" -v d="$RULE_DIR" '{print d "/" $1 "\t" $2}' "$RULES" >> "$LINKS"
+
+FOREIGN=$(mktemp)
+for d in $SKILL_DIRS "$RULE_DIR"; do
+  for p in "$d"/*; do
+    { [ -e "$p" ] || [ -L "$p" ]; } && ! ours "$p" && echo "$p"
+  done
+done > "$FOREIGN" || true
+if [ -n "$CLEAN" ] && [ -s "$FOREIGN" ]; then
+  aside=$CACHE/removed-$(date +%Y-%m-%d-%H%M%S)
+  while IFS= read -r p; do
+    mkdir -p "$aside/$(dirname "${p#$HOME/}")" && mv "$p" "$aside/${p#$HOME/}"
+  done < "$FOREIGN"
+  echo "Moved $(wc -l < "$FOREIGN" | tr -d ' ') things sync didn't make to $aside"
+  : > "$FOREIGN"
+fi
+
+while IFS= read -r p; do   # remove my links that are no longer wanted
+  cut -f1 "$LINKS" | grep -qxF "$p" || { [ -L "$p" ] && rm "$p"; } || true
+done < "$CACHE/links"
+while IFS="$TAB" read -r p target; do
+  if [ -e "$p" ] || [ -L "$p" ]; then
+    ours "$p" || die "$p is in the way and isn't from this repo; move it, or run bin/sync --clean"
+  fi
+  ln -sfn "$target" "$p"
+done < "$LINKS"
+cut -f1 "$LINKS" > "$CACHE/links"
+
+# --- Rules as text for Codex and Cursor ------------------------------------
+TEXT=$(mktemp)
+cut -f2 "$RULES" | while IFS= read -r f; do cat "$f"; echo; done > "$TEXT"
+mkdir -p "$HOME/.codex" "$HOME/.cursor/rules"
+codex=$HOME/.codex/AGENTS.md
+touch "$codex"
+awk '/^<!-- agentfiles:start -->$/ {skip = 1} !skip {print} /^<!-- agentfiles:end -->$/ {skip = 0}' "$codex" > "$codex.tmp"
+if [ -s "$TEXT" ]; then
+  { echo '<!-- agentfiles:start -->'; cat "$TEXT"; echo '<!-- agentfiles:end -->'; } >> "$codex.tmp"
+  { printf -- '---\nalwaysApply: true\n---\n\n'; cat "$TEXT"; } > "$HOME/.cursor/rules/agentfiles.mdc"
+else
+  rm -f "$HOME/.cursor/rules/agentfiles.mdc"
+fi
+mv "$codex.tmp" "$codex"
+
+# --- Init scripts ----------------------------------------------------------
+for f in "$REPO"/shared/init/*.sh "$MINE"/init/*.sh; do
+  [ -f "$f" ] || continue
+  ME=$ME REPO=$REPO bash "$f" || die "init script ${f#$REPO/} failed"
+done
+
+# --- Report ---------------------------------------------------------------
+if [ -s "$FOREIGN" ]; then
+  echo
+  echo "Not from this repo (bin/sync --clean moves them to $CACHE/):"
+  sed 's/^/  /' "$FOREIGN"
+fi
+echo
+echo "Synced $(wc -l < "$SKILLS" | tr -d ' ') skills and $(wc -l < "$RULES" | tr -d ' ') rule files for $ME. New ones load in a new chat."
+rm -f "$WANT" "$SKILLS" "$RULES" "$LINKS" "$FOREIGN" "$TEXT"

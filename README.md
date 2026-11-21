@@ -67,4 +67,9 @@ It needs `git` and stops at the start if it's missing.
 
 ## Remove it
 
-Delete the links in `~/.claude/skills/`, `~/.agents/skills/` and `~/.claude/rules/` that point into this repo or into a folder in your `opt-in.txt`. Then delete `~/.cursor/rules/agentfiles.mdc` and the block between the `agentfiles` markers in `~/.codex/AGENTS.md`.
+```sh
+while read -r l; do rm -f "$l"; done < ~/.cache/agentfiles/links
+rm -rf ~/.cursor/rules/agentfiles.mdc ~/.cache/agentfiles
+```
+
+Then delete the block between the `agentfiles` markers in `~/.codex/AGENTS.md`.

@@ -1,0 +1,2 @@
+# Skills you'd otherwise get but don't want, one name per line:
+#   grilling
