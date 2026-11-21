@@ -38,6 +38,8 @@ bin/sync
 
 The first time, run `bin/sync --me <name>`. It creates `people/<name>/` with the files above and a rule, `rules/me.md`, that tells your agent who you are. Make that rule yours: add the names you go by in tickets and chat, and anything else your agent should know about you.
 
+That first sync also copies the skills listed in `shared/upstream.txt` into `shared/upstream/`. Read them, delete the lines you don't want, and commit the rest: from then on, everyone's sync uses the committed copies.
+
 After that, run `bin/sync` whenever you pull or add or remove a skill or rule, then start a new chat. Edits inside an existing skill or rule work at once.
 
 Or just ask your agent: "make that a skill of mine", "turn off X", "use Ana's review skill". The shared `agentfiles` skill knows this repo.
