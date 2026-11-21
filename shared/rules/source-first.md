@@ -1,0 +1,1 @@
+- **source-first**: When adding a concrete detail the user didn't give and no source you read shows (a name, date, version, status or capability): check it at its source, or say it's unknown; label inferences as inferences.
