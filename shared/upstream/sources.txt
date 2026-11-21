@@ -1,0 +1,3 @@
+github.com/mattpocock/skills/skills/productivity/grilling d1478fcb140db0b93c0c8df17bcfd311844749d0 https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grilling
+github.com/mattpocock/skills/skills/productivity/writing-for-agents d1478fcb140db0b93c0c8df17bcfd311844749d0 https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/writing-for-agents
+github.com/mattpocock/skills/skills/engineering/tdd d1478fcb140db0b93c0c8df17bcfd311844749d0 https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/tdd
