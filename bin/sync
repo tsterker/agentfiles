@@ -142,6 +142,7 @@ awk -F"$TAB" -v d="$RULE_DIR" '{print d "/" $1 "\t" $2}' "$RULES" >> "$LINKS"
 FOREIGN=$(mktemp)
 for d in $SKILL_DIRS "$RULE_DIR"; do
   for p in "$d"/*; do
+    [ "$p" != "$HOME/.claude/skills/synced" ] || continue   # Claude Code's own copy of the claude.ai account's skills
     { [ -e "$p" ] || [ -L "$p" ]; } && ! ours "$p" && echo "$p"
   done
 done > "$FOREIGN" || true
