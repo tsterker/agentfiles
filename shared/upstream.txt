@@ -7,7 +7,7 @@
 # For a newer copy: delete its folder under upstream/, then bin/sync.
 
 # Matt Pocock's skills (MIT): grilling and its family, writing for agents, and the
-# engineering loop, with every skill these call.
+# engineering loop, debugging and handoffs, with every skill these call.
 https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grilling
 https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grill-me
 https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/grill-with-docs
@@ -20,6 +20,8 @@ https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/wayfinder
 https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/research
 https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/prototype
 https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/setup-matt-pocock-skills
+https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/diagnosing-bugs
+https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/handoff
 
 # pstack principles (MIT): check the real thing before calling it done; remove before adding.
 https://github.com/michael-denyer/pstack-claude/tree/v0.9.112/plugins/pstack/skills/principle-prove-it-works
