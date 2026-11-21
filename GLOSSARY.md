@@ -20,6 +20,14 @@ _Avoid_: agent, tool, client, IDE
 
 ### Where it comes from
 
+**Starter**:
+The public repo every fork comes from: the sync scripts in `bin/`, the docs, and a default `shared/`.
+_Avoid_: upstream, template, base
+
+**Fork**:
+A team's own copy of the starter on its own git host, which adds the team's shared and people content and merges the starter's changes in.
+_Avoid_: mirror, clone, copy
+
 **Shared**:
 The part of the repo everyone gets: skills and rules the team agreed on.
 _Avoid_: team, global, core

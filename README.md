@@ -5,7 +5,7 @@ One repo that gives a team's coding agents (Claude Code, Codex, Cursor, OpenCode
 - **Skill**: a folder with a `SKILL.md` that teaches an agent one kind of task. The agent always sees its name and description and reads the rest when a task fits.
 - **Rule**: one line every agent reads in every chat, shaped `- **name**: When <situation>: <do>`. Each one costs attention in every chat, so keep them few.
 
-The other terms are in [GLOSSARY.md](GLOSSARY.md).
+The other terms are in [GLOSSARY.md](GLOSSARY.md). To adopt it for your team and keep getting its changes, fork it: [FORK.md](FORK.md).
 
 ## Principles
 
