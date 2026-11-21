@@ -75,7 +75,7 @@ Once you hand it over, sync owns these, all or nothing:
 
 - `~/.claude/skills/` and `~/.agents/skills/` (Codex): links to your skills. Also `~/.codex/skills/`, `~/.cursor/skills/` and `~/.config/opencode/skills/`, which it keeps empty. Cursor reads all four, so it lists each skill twice.
 - `~/.claude/rules/`: links to your rules. `~/.codex/AGENTS.md` and `~/.config/opencode/AGENTS.md`: your rules as text. `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.override.md`: kept absent, since they'd add to or replace those; rules go in `rules/`.
-- `~/.cursor/plugins/local/agentfiles-rules/`: your rules as a plugin, which the Cursor IDE and T3 Code read. Other plugins there are listed, not changed. `~/.cursor/rules/`: one rule that makes the `cursor-agent` CLI, which reads no plugin, warn in every reply that it has none of your rules.
+- `~/.cursor/plugins/local/`: your rules as the plugin `agentfiles-rules`, which the Cursor IDE and T3 Code read. A plugin another tool puts there needs its name in `keep.txt`. `~/.cursor/rules/`: one rule that makes the `cursor-agent` CLI, which reads no plugin, warn in every reply that it has none of your rules.
 
 It lists the subagents, hooks, MCP servers and plugins it finds, and runs your init scripts. It needs `git` and `jq` and stops at the start if either is missing.
 
