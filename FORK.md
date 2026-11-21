@@ -36,9 +36,10 @@ jj bookmark track main --remote=origin
 jj config set --repo git.fetch '["origin", "starter"]'
 jj git push -b main
 jj config set --repo 'revset-aliases."trunk()"' main@origin
+jj config set --repo revsets.log "$(jj config get revsets.log) | trunk()..present(main@starter)"
 ```
 
-jj moves a tracked bookmark on every fetch, so `main` tracks only the fork's; jj then also refuses to push `main` to the starter.
+jj moves a tracked bookmark on every fetch, so `main` tracks only the fork's; jj then also refuses to push `main` to the starter. The last line makes `jj log` show the starter's commits the fork hasn't merged yet.
 
 Colleagues clone the fork and run `bin/sync --me <name>`; they need no `starter` remote. Run `bin/sync` from the fork's clone yourself too: sync links your harnesses to the clone it runs from.
 
