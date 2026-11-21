@@ -47,7 +47,7 @@ A person's choice to not get a skill or init script they would otherwise get, wi
 _Avoid_: disable, park, mute, blocklist
 
 **Sync**:
-Making a machine's harnesses match the repo for one person: their shared, own, opted-in and upstream skills and rules, minus those turned off. It owns the folders and files those harnesses read skills and rules from, all or nothing, from the first `--clean` on.
+Making a machine's harnesses match the repo for one person: their shared, own, opted-in and upstream skills and rules, minus those turned off. It owns the folders and files those harnesses read skills and rules from, all or nothing, from the first sync that sets up: right away on a machine with nothing in the way, otherwise after `--clean`.
 _Avoid_: install, deploy, update
 
 **Keep**:

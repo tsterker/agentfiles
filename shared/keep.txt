@@ -1,4 +1,6 @@
 # Names sync leaves alone in every folder it owns, because another tool installs them there.
 # One per line, with a comment saying who installs it.
 synced           # Claude Code: your claude.ai account's skills, in ~/.claude/skills/synced
+.trash           # Claude Code: its bin for removed skills, in ~/.claude/skills/.trash
+.system          # Codex: its built-in skills, in ~/.codex/skills/.system
 tldraw-offline   # tldraw office installs its agent skill; init/tldraw.sh checks it did

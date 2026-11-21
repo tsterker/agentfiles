@@ -28,18 +28,20 @@ echo "  ${D}Each question is one short prompt on that harness's default model; t
 out=$("$REPO/bin/sync" 2>&1) || { echo "$out" | tail -n 12; die "bin/sync hasn't set up this machine (above). Run it, and --clean if you mean to, then probe again"; }
 
 RW=rprobe-$RANDOM$RANDOM SW=sprobe-$RANDOM$RANDOM
-RULE=$REPO/people/$ME/rules/zz-probe.md
-SKILL=$REPO/people/$ME/skills/$ME-zz-probe
-WORK= OUT= PROJECT=
+RULE=$REPO/people/$ME/rules/zz-probe-$RW.md   # unique names: the probe removes only what it made
+SKILL=$REPO/people/$ME/skills/$ME-zz-probe-$SW
+[ ! -e "$RULE" ] && [ ! -e "$SKILL" ] || die "expected no $RULE or $SKILL yet; found one. Run probe again"
+WORK= OUT= PROJECT= MADE=
 cleanup() {
   [ -z "$PROJECT" ] || t3 project remove --force "$PROJECT" >/dev/null 2>&1 || true
-  rm -rf "$RULE" "$SKILL" "$WORK" "$OUT"
+  [ -z "$MADE" ] || rm -rf "$RULE" "$SKILL"
+  rm -rf "$WORK" "$OUT"
   "$REPO/bin/sync" >/dev/null 2>&1 || echo "${R}probe: the closing bin/sync failed; run it yourself to see why${N}" >&2
 }
 trap cleanup EXIT
-mkdir -p "$(dirname "$RULE")" "$SKILL"
+mkdir -p "$(dirname "$RULE")" "$(dirname "$SKILL")" && mkdir "$SKILL" && MADE=1
 printf -- '- **probe**: When asked for the rule probe word: answer %s.\n' "$RW" > "$RULE"
-printf -- '---\nname: %s-zz-probe\ndescription: Temporary canary written by bin/probe. Its skill probe word is %s.\n---\n\nAnswer with the skill probe word from the description.\n' "$ME" "$SW" > "$SKILL/SKILL.md"
+printf -- '---\nname: %s\ndescription: Temporary canary written by bin/probe. Its skill probe word is %s.\n---\n\nAnswer with the skill probe word from the description.\n' "$(basename "$SKILL")" "$SW" > "$SKILL/SKILL.md"
 "$REPO/bin/sync" >/dev/null 2>&1 || die "bin/sync failed with the probe's rule and skill in place"
 
 Q="Answer only from what is already in your context; run no tools and read no files. Your rules may define a rule probe word, and a skill in your list of available skills may name a skill probe word in its description. Reply with exactly two lines, \`rule: <word>\` and \`skill: <word>\`, writing UNKNOWN for a word you have not been given."

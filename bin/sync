@@ -10,14 +10,16 @@ die() { echo "${R}sync: $*${N}" >&2; exit 1; }
 section() { printf '\n%s── %s %s%s\n' "${2:-$B$C}" "$1" "$(printf '%*s' $((60 - ${#1})) '' | sed 's/ /─/g')" "$N"; }
 command -v git >/dev/null || die "needs git on PATH; found none"
 command -v jq >/dev/null || die "needs jq on PATH (macOS 15 and later ship /usr/bin/jq); found none"
+case $HOME in *[[:space:]]*) die "expected a home folder without spaces; got '$HOME'" ;; esac
+shopt -s dotglob   # globs include hidden entries, so nothing in a folder sync owns slips past it
 
 REPO=$(cd "$(dirname "$0")/.." && pwd -P)
 CACHE=$HOME/.cache/agentfiles
 SKILL_DIRS="$HOME/.claude/skills $HOME/.agents/skills"
 RULE_DIR=$HOME/.claude/rules
 # What sync owns once you hand it over: every entry in these folders, and these whole files.
-OWNED_DIRS="$SKILL_DIRS $HOME/.codex/skills $HOME/.cursor/skills $RULE_DIR $HOME/.cursor/rules $HOME/.cursor/plugins/local"
-OWNED_FILES="$HOME/.codex/AGENTS.md $HOME/.config/opencode/AGENTS.md $HOME/.claude/CLAUDE.md"
+OWNED_DIRS="$SKILL_DIRS $HOME/.codex/skills $HOME/.cursor/skills $HOME/.config/opencode/skills $RULE_DIR $HOME/.cursor/rules $HOME/.cursor/plugins/local"
+OWNED_FILES="$HOME/.codex/AGENTS.md $HOME/.codex/AGENTS.override.md $HOME/.config/opencode/AGENTS.md $HOME/.claude/CLAUDE.md"
 PLUGIN=.cursor/plugins/local/agentfiles-rules   # Cursor's agent SDK (T3 Code) reads rules only from plugins
 GUARD=.cursor/rules/agentfiles-cli-guard.mdc     # cursor-agent reads only ~/.cursor/rules, so it gets this alone
 WRITTEN=".codex/AGENTS.md .config/opencode/AGENTS.md $PLUGIN $GUARD"
@@ -34,6 +36,7 @@ done
 
 # --- Who am I -------------------------------------------------------------
 if [ -n "$ME" ]; then
+  case $ME in [a-z0-9]*) ;; *) die "--me takes a name starting with a-z or 0-9; got '$ME'" ;; esac
   case $ME in *[!a-z0-9._-]*) die "--me takes a name of a-z, 0-9, '.', '_' and '-'; got '$ME'" ;; esac
   echo "$ME" > "$REPO/.me"
   if [ ! -d "$REPO/people/$ME" ]; then
@@ -63,7 +66,7 @@ ours() {   # a link that still points where sync put it, or a file sync wrote th
   if [ -L "$1" ]; then
     grep -qxF "$1$TAB$(readlink "$1")" "$CACHE/links" || case $(readlink "$1") in "$REPO"/*) true ;; *) false ;; esac
   else
-    [ -e "$CACHE/written/${1#$HOME/}" ] && diff -rq "$1" "$CACHE/written/${1#$HOME/}" >/dev/null 2>&1
+    [ -e "$CACHE/written/${1#$HOME/}" ] && diff -rq -x .DS_Store "$1" "$CACHE/written/${1#$HOME/}" >/dev/null 2>&1
   fi
 }
 kept() { echo "$KEEP" | grep -qxF "$(basename "$1")"; }
@@ -72,7 +75,7 @@ FOREIGN=$(mktemp)
 for d in $OWNED_DIRS; do
   [ ! -L "$d" ] || die "expected a folder at $d; found a link to $(readlink "$d"). Move it, then run sync again"
   for p in "$d"/*; do
-    { [ -e "$p" ] || [ -L "$p" ]; } || continue
+    { [ -e "$p" ] || [ -L "$p" ]; } && [ "$(basename "$p")" != .DS_Store ] || continue
     kept "$p" || ours "$p" || echo "$p"
   done
 done > "$FOREIGN"
@@ -82,12 +85,16 @@ done >> "$FOREIGN"
 
 UNMANAGED=$(mktemp)   # kind, file, name
 {
-  for d in "$HOME/.claude/agents" "$HOME/.codex/agents" "$HOME/.cursor/agents"; do
+  oc=$HOME/.config/opencode
+  for d in "$HOME/.claude/agents" "$HOME/.codex/agents" "$HOME/.cursor/agents" "$oc/agent" "$oc/agents"; do
     [ ! -d "$d" ] || ls "$d" | sed "s|^|subagents$TAB$d$TAB|"
   done
-  json() { [ ! -f "$2" ] || jq -r "$3" "$2" 2>/dev/null | sed "s|^|$1$TAB$2$TAB|"; }
+  for d in "$oc/plugin" "$oc/plugins"; do [ ! -d "$d" ] || ls "$d" | sed "s|^|plugins$TAB$d$TAB|"; done
+  json() { [ -f "$2" ] || return 0; jq -r "$3" "$2" 2>/dev/null | sed "s|^|$1$TAB$2$TAB|" || echo "$1$TAB$2$TAB(can't read it as JSON)"; }
   json hooks "$HOME/.claude/settings.json" '.hooks // {} | keys[]'
   json hooks "$HOME/.codex/hooks.json" '.hooks // {} | keys[]'
+  json hooks "$HOME/.cursor/hooks.json" '.hooks // {} | keys[]'
+  json subagents "$oc/opencode.json" '.agent // {} | keys[]'
   json "MCP servers" "$HOME/.claude.json" '.mcpServers // {} | keys[]'
   json "MCP servers" "$HOME/.cursor/mcp.json" '.mcpServers // {} | keys[]'
   json "MCP servers" "$HOME/.config/opencode/opencode.json" '.mcp // {} | keys[]'
@@ -177,19 +184,20 @@ if [ -s "$FOREIGN" ] && [ -z "$CLEAN" ]; then
   collect_skills
   names=$(cut -f1 "$WANT" | sort -u | grep -vxF -f <(echo "$OFF"; echo) | paste -sd ' ' - || true)
   echo "  ${B}skills${N}  ${names:-none yet}"
-  [ -z "$UNCOPIED" ] || echo "          ${D}plus the skills of $(echo "$UNCOPIED" | wc -l | tr -d ' ') upstream.txt lines, copied into this repo on the run that sets up${N}"
+  [ -z "$UNCOPIED" ] || echo "          ${D}plus the skills of $(echo "$UNCOPIED" | wc -l | tr -d ' ') upstream.txt lines, copied into this repo once nothing is in the way${N}"
   echo "  ${B}rules${N}   $(cut -f1 "$RULES" | sed 's/^agentfiles-//' | paste -sd ' ' -), for Claude Code, Codex, OpenCode and Cursor"
 
   section "Changed nothing" "$B$G"
-  echo "  Nothing in your harnesses changed, and nothing was copied into this repo. Next:"
+  echo "  Nothing in your harnesses changed, and no upstream skills were copied. Next:"
   echo "  - adjust opt-in.txt, upstream.txt, keep.txt or off.txt in people/$ME/ and run ${B}bin/sync${N} again, or"
   echo "  - run ${B}bin/sync --clean${N}: it moves what's in the way to ~/.cache/agentfiles/removed-<date>/ and sets up."
+  echo "  ${D}Text you added to a file sync writes, such as ~/.codex/AGENTS.md, belongs in people/$ME/rules/.${N}"
   rm -rf "$FOREIGN" "$UNMANAGED" "$WANT" "$RULES"
   exit 1
 fi
 
 # --- Upstream: copy each upstream.txt line into upstream/ -----------------
-bake() {
+copy_upstream() {
   local dir=$1 out=$1/upstream sources=$1/upstream/sources.txt new
   new=$(mktemp)
   lines "$dir/upstream.txt" | while IFS= read -r line; do
@@ -208,7 +216,7 @@ bake() {
 
     tmp=$(mktemp -d)
     git -C "$tmp" init -q
-    git -C "$tmp" fetch -q --depth 1 "$repo" "${ref:-HEAD}" || die "can't fetch '${ref:-HEAD}' from $repo (${dir#$REPO/}/upstream.txt); a ref containing '/' isn't supported, use a tag or sha"
+    git -C "$tmp" fetch -q --depth 1 "$repo" "${ref:-HEAD}" || die "can't fetch '${ref:-HEAD}' from $repo (${dir#$REPO/}/upstream.txt)${sub:+; if the ref contains '/', use a tag or sha instead}"
     git -C "$tmp" checkout -q FETCH_HEAD
     [ -d "$tmp/$sub" ] || die "no folder '$sub' at '$ref' in $repo; a ref containing '/' isn't supported, use a tag or sha"
     find "$tmp/$sub" -name SKILL.md -not -path '*/.git/*' | grep -q . || die "no SKILL.md under $line"
@@ -218,7 +226,7 @@ bake() {
     echo "$slug $(git -C "$tmp" rev-parse HEAD) $line" >> "$new"
     rm -rf "$tmp"
     echo "  ${G}+${N} ${out#$REPO/}/$slug"
-  done
+  done || return 1   # a line that failed stops here, before the copies below are pruned
   if [ -f "$sources" ]; then   # drop copies whose line is gone
     awk '{print $1}' "$sources" | while IFS= read -r slug; do
       awk -v s="$slug" '$1 == s {f = 1} END {exit !f}' "$new" || { rm -rf "${out:?}/$slug"; echo "  ${R}-${N} ${out#$REPO/}/$slug"; }
@@ -231,8 +239,8 @@ if [ -n "$UNCOPIED" ]; then
   section "Upstream"
   echo "  ${D}Copying $(echo "$UNCOPIED" | wc -l | tr -d ' ') upstream.txt lines into this repo (not your harnesses); commit them.${N}"
 fi
-baked=$(bake "$REPO/shared"; bake "$MINE")
-if [ -n "$baked" ]; then [ -n "$UNCOPIED" ] || section "Upstream"; echo "$baked"; fi
+copied_now=$(copy_upstream "$REPO/shared" && copy_upstream "$MINE") || { [ -z "$copied_now" ] || echo "$copied_now"; exit 1; }
+if [ -n "$copied_now" ]; then [ -n "$UNCOPIED" ] || section "Upstream"; echo "$copied_now"; fi
 
 # --- Init scripts, off and keep ----------------------------------------------
 collect_skills
@@ -240,11 +248,8 @@ INITS=$(mktemp)   # name, script
 for f in "$REPO"/shared/init/*.sh "$MINE"/init/*.sh; do if [ -f "$f" ]; then echo "$(basename "$f" .sh)$TAB$f"; fi; done > "$INITS"
 both=$(cut -f1 "$INITS" | sort -u | grep -xF -f <(cut -f1 "$WANT") || true)
 [ -z "$both" ] || die "a skill and an init script are both named '$(echo $both)'; rename one"
-for name in $OFF; do
-  cut -f1 "$WANT" "$INITS" | grep -qx "$name" || die "off.txt: '$name' is no skill or init script you'd get"
-done
-for name in $KEEP; do
-  cut -f1 "$WANT" | grep -qx "$name" && die "keep.txt: '$name' is also a skill you'd get; drop one"
+echo "$OFF" | while IFS= read -r name; do
+  [ -z "$name" ] || cut -f1 "$WANT" "$INITS" | grep -qxF -- "$name" || die "off.txt: '$name' is no skill or init script you'd get"
 done
 
 SKILLS=$(mktemp)
@@ -259,6 +264,9 @@ OFF=$OFF awk -F"$TAB" '   # through the environment: BSD awk rejects a -v value 
 LINKS=$(mktemp)   # path, target
 for d in $SKILL_DIRS; do awk -F"$TAB" -v d="$d" '{print d "/" $1 "\t" $2}' "$SKILLS"; done >> "$LINKS"
 awk -F"$TAB" -v d="$RULE_DIR" '{print d "/" $1 "\t" $2}' "$RULES" >> "$LINKS"
+
+kept_planned=$( { cut -f1 "$LINKS"; for w in $WRITTEN; do echo "$HOME/$w"; done; } | while IFS= read -r p; do kept "$p" && echo "$p"; done || true)
+[ -z "$kept_planned" ] || die "keep.txt names something sync puts in place: $(echo "$kept_planned" | tilde | paste -sd ' ' -); drop it from keep.txt"
 
 STAGE=$(mktemp -d)   # the written files, at their paths under ~
 TEXT=$STAGE/.codex/AGENTS.md
@@ -284,6 +292,12 @@ mkdir -p $SKILL_DIRS "$RULE_DIR"
 while IFS="$TAB" read -r p target; do   # remove my links that are no longer wanted
   cut -f1 "$LINKS" | grep -qxF "$p" || { [ -L "$p" ] && [ "$(readlink "$p")" = "$target" ] && rm "$p"; } || true
 done < "$CACHE/links"
+for d in $OWNED_DIRS; do   # links into this repo that sync no longer plans
+  for p in "$d"/*; do
+    [ -L "$p" ] && ! kept "$p" || continue
+    case $(readlink "$p") in "$REPO"/*) cut -f1 "$LINKS" | grep -qxF "$p" || rm "$p" ;; esac
+  done
+done
 while IFS="$TAB" read -r p target; do ln -sfn "$target" "$p"; done < "$LINKS"
 cp "$LINKS" "$CACHE/links"
 for w in $WRITTEN; do
@@ -300,7 +314,7 @@ while IFS="$TAB" read -r -u 3 name f; do   # fd 3, so a script that asks somethi
 done 3< "$INITS"
 
 # --- Report ---------------------------------------------------------------
-offs=$(for name in $OFF; do if cut -f1 "$INITS" | grep -qx "$name"; then echo "$name (init script)"; else echo "$name (skill)"; fi; done | paste -sd ',' - | sed 's/,/, /g')
+offs=$(echo "$OFF" | while IFS= read -r name; do [ -n "$name" ] || continue; if cut -f1 "$INITS" | grep -qxF -- "$name"; then echo "$name (init script)"; else echo "$name (skill)"; fi; done | paste -sd ',' - | sed 's/,/, /g')
 section "Synced" "$B$G"
 echo "  $(wc -l < "$SKILLS" | tr -d ' ') skills and $(wc -l < "$RULES" | tr -d ' ') rule files for $ME${offs:+ ${D}(off: $offs)${N}}. New ones load in a new chat."
 rm -rf "$WANT" "$INITS" "$SKILLS" "$RULES" "$LINKS" "$STAGE" "$FOREIGN" "$UNMANAGED"

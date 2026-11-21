@@ -1,6 +1,6 @@
 # agentfiles-starter
 
-One repo that gives a team's coding agents (Claude Code, Codex, Cursor) the same skills and rules, and gives every person a folder of their own that colleagues can borrow from.
+One repo that gives a team's coding agents (Claude Code, Codex, Cursor, OpenCode) the same skills and rules, and gives every person a folder of their own that colleagues can borrow from.
 
 - **Skill**: a folder with a `SKILL.md` that teaches an agent one kind of task. The agent always sees its name and description and reads the rest when a task fits.
 - **Rule**: one line every agent reads in every chat, shaped `- **name**: When <situation>: <do>`. Each one costs attention in every chat, so keep them few.
@@ -40,11 +40,11 @@ bin/probe                        checks that every harness sees what sync put in
 
 The first time, run `bin/sync --me <name>`. It creates `people/<name>/` with the files above and a rule, `rules/me.md`, that tells your agent who you are. Make that rule yours: add the names you go by in tickets and chat, and anything else your agent should know about you.
 
-**Your existing setup.** If none of your harnesses has skills or rules yet, the first `bin/sync` sets everything up. Otherwise it changes nothing and lists what it would put in place and what's in its way. Adjust your folder (opt-ins, upstreams, `keep.txt`, `off.txt`) and run it again until the list looks right. Then `bin/sync --clean` moves what's in its way to `~/.cache/agentfiles/removed-<date>/`; nothing is deleted. From then on, a plain `bin/sync` keeps it that way.
+**Your existing setup.** If none of your harnesses has skills or rules yet, the first `bin/sync` sets everything up. Otherwise it changes nothing in your harnesses, copies no upstream skills, and lists what it would put in place and what's in its way. Adjust your folder (opt-ins, upstreams, `keep.txt`, `off.txt`) and run it again until the list looks right. Then `bin/sync --clean` moves what's in its way to `~/.cache/agentfiles/removed-<date>/`; nothing is deleted. From then on, a plain `bin/sync` keeps it that way.
 
-That first sync also copies the skills listed in `shared/upstream.txt` into `shared/upstream/`. Read them, delete the lines you don't want, and commit the rest: from then on, everyone's sync uses the committed copies.
+The first sync that sets up also copies the skills listed in `shared/upstream.txt` into `shared/upstream/`. Read them, delete the lines you don't want, and commit the rest: from then on, everyone's sync uses the committed copies.
 
-After that, run `bin/sync` whenever you pull or add or remove a skill or rule, then start a new chat. Edits inside an existing skill or rule work at once.
+After that, run `bin/sync` whenever you pull or add or remove a skill or rule, then start a new chat. Edits inside an existing skill work at once, and so do rule edits for Claude Code; Codex, OpenCode and Cursor get rule edits on the next sync.
 
 Or just ask your agent: "make that a skill of mine", "turn off X", "use Ana's review skill". The shared `agentfiles` skill knows this repo.
 
@@ -73,8 +73,8 @@ Your agent's habits come from these rules and skills, so you change them by talk
 
 Once you hand it over, sync owns these, all or nothing:
 
-- `~/.claude/skills/` and `~/.agents/skills/` (Codex): links to your skills. Also `~/.codex/skills/` and `~/.cursor/skills/`, which it keeps empty. Cursor reads all four, so it lists each skill twice.
-- `~/.claude/rules/`: links to your rules. `~/.codex/AGENTS.md` and `~/.config/opencode/AGENTS.md`: your rules as text. `~/.claude/CLAUDE.md`: kept absent; rules go in `rules/`.
+- `~/.claude/skills/` and `~/.agents/skills/` (Codex): links to your skills. Also `~/.codex/skills/`, `~/.cursor/skills/` and `~/.config/opencode/skills/`, which it keeps empty. Cursor reads all four, so it lists each skill twice.
+- `~/.claude/rules/`: links to your rules. `~/.codex/AGENTS.md` and `~/.config/opencode/AGENTS.md`: your rules as text. `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.override.md`: kept absent, since they'd add to or replace those; rules go in `rules/`.
 - `~/.cursor/plugins/local/`: your rules as the plugin `agentfiles-rules`, which the Cursor IDE and T3 Code read. `~/.cursor/rules/`: one rule that makes the `cursor-agent` CLI, which reads no plugin, warn in every reply that it has none of your rules.
 
 It lists the subagents, hooks, MCP servers and plugins it finds, and runs your init scripts. It needs `git` and `jq` and stops at the start if either is missing.

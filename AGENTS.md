@@ -1,6 +1,6 @@
 # agentfiles-starter
 
-What this repo is, its principles and how it's used: `README.md`. Its terms: `GLOSSARY.md`. How to add, change or remove a skill, rule, opt-in, off or upstream line: `shared/skills/agentfiles/SKILL.md`.
+What this repo is, its principles and how it's used: `README.md`. Its terms: `GLOSSARY.md`. How to add, change or remove a skill, rule, init script, or an opt-in, off, keep or upstream line: `shared/skills/agentfiles/SKILL.md`.
 
 - **principles**: When a change could go two ways: the README's Principles decide.
 - **simple**: When changing anything here: build the simplest thing that works for a case someone has actually hit, and let every other case stop with one line naming what was expected and what was found. When a request adds machinery, do it and name the simpler option once.
