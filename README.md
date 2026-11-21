@@ -54,7 +54,7 @@ Or just ask your agent: "make that a skill of mine", "turn off X", "use Ana's re
 | add a rule | a line in `people/<you>/rules/<topic>.md` |
 | use a colleague's skill | `ana/review` (or `ana/*`) in your `opt-in.txt` |
 | use skills from a folder on your disk | its path in your `opt-in.txt`; linked live, never committed |
-| skip a skill or init script you'd otherwise get | its name in your `off.txt` |
+| skip a skill or init script you'd otherwise get | its name in your `off.txt`; an init script by its file name, `tldraw.sh` |
 | use skills from another git repo | its URL in `upstream.txt` (a repo, or a `/tree/<ref>/<path>` link to part of it), then `bin/sync` and commit `upstream/` with the line |
 | get a newer copy of an upstream skill | delete its folder under `upstream/`, then `bin/sync` |
 | run setup that links can't do | a script in `init/`; it must be safe to run again, and its failure stops sync |
@@ -75,7 +75,7 @@ Once you hand it over, sync owns these, all or nothing:
 
 - `~/.claude/skills/` and `~/.agents/skills/` (Codex): links to your skills. Also `~/.codex/skills/`, `~/.cursor/skills/` and `~/.config/opencode/skills/`, which it keeps empty. Cursor reads all four, so it lists each skill twice.
 - `~/.claude/rules/`: links to your rules. `~/.codex/AGENTS.md` and `~/.config/opencode/AGENTS.md`: your rules as text. `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.override.md`: kept absent, since they'd add to or replace those; rules go in `rules/`.
-- `~/.cursor/plugins/local/`: your rules as the plugin `agentfiles-rules`, which the Cursor IDE and T3 Code read. `~/.cursor/rules/`: one rule that makes the `cursor-agent` CLI, which reads no plugin, warn in every reply that it has none of your rules.
+- `~/.cursor/plugins/local/agentfiles-rules/`: your rules as a plugin, which the Cursor IDE and T3 Code read. Other plugins there are listed, not changed. `~/.cursor/rules/`: one rule that makes the `cursor-agent` CLI, which reads no plugin, warn in every reply that it has none of your rules.
 
 It lists the subagents, hooks, MCP servers and plugins it finds, and runs your init scripts. It needs `git` and `jq` and stops at the start if either is missing.
 

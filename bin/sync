@@ -18,9 +18,9 @@ CACHE=$HOME/.cache/agentfiles
 SKILL_DIRS="$HOME/.claude/skills $HOME/.agents/skills"
 RULE_DIR=$HOME/.claude/rules
 # What sync owns once you hand it over: every entry in these folders, and these whole files.
-OWNED_DIRS="$SKILL_DIRS $HOME/.codex/skills $HOME/.cursor/skills $HOME/.config/opencode/skills $RULE_DIR $HOME/.cursor/rules $HOME/.cursor/plugins/local"
-OWNED_FILES="$HOME/.codex/AGENTS.md $HOME/.codex/AGENTS.override.md $HOME/.config/opencode/AGENTS.md $HOME/.claude/CLAUDE.md"
 PLUGIN=.cursor/plugins/local/agentfiles-rules   # Cursor's agent SDK (T3 Code) reads rules only from plugins
+OWNED_DIRS="$SKILL_DIRS $HOME/.codex/skills $HOME/.cursor/skills $HOME/.config/opencode/skills $RULE_DIR $HOME/.cursor/rules"
+OWNED_FILES="$HOME/.codex/AGENTS.md $HOME/.codex/AGENTS.override.md $HOME/.config/opencode/AGENTS.md $HOME/.claude/CLAUDE.md $HOME/$PLUGIN"
 GUARD=.cursor/rules/agentfiles-cli-guard.mdc     # cursor-agent reads only ~/.cursor/rules, so it gets this alone
 WRITTEN=".codex/AGENTS.md .config/opencode/AGENTS.md $PLUGIN $GUARD"
 TAB=$(printf '\t')
@@ -90,6 +90,7 @@ UNMANAGED=$(mktemp)   # kind, file, name
     [ ! -d "$d" ] || ls "$d" | sed "s|^|subagents$TAB$d$TAB|"
   done
   for d in "$oc/plugin" "$oc/plugins"; do [ ! -d "$d" ] || ls "$d" | sed "s|^|plugins$TAB$d$TAB|"; done
+  [ ! -d "$HOME/.cursor/plugins/local" ] || ls "$HOME/.cursor/plugins/local" | grep -vxF agentfiles-rules | sed "s|^|plugins$TAB$HOME/.cursor/plugins/local$TAB|" || true
   json() { [ -f "$2" ] || return 0; jq -r "$3" "$2" 2>/dev/null | sed "s|^|$1$TAB$2$TAB|" || echo "$1$TAB$2$TAB(can't read it as JSON)"; }
   json hooks "$HOME/.claude/settings.json" '.hooks // {} | keys[]'
   json hooks "$HOME/.codex/hooks.json" '.hooks // {} | keys[]'
@@ -244,10 +245,8 @@ if [ -n "$copied_now" ]; then [ -n "$UNCOPIED" ] || section "Upstream"; echo "$c
 
 # --- Init scripts, off and keep ----------------------------------------------
 collect_skills
-INITS=$(mktemp)   # name, script
-for f in "$REPO"/shared/init/*.sh "$MINE"/init/*.sh; do if [ -f "$f" ]; then echo "$(basename "$f" .sh)$TAB$f"; fi; done > "$INITS"
-both=$(cut -f1 "$INITS" | sort -u | grep -xF -f <(cut -f1 "$WANT") || true)
-[ -z "$both" ] || die "a skill and an init script are both named '$(echo $both)'; rename one"
+INITS=$(mktemp)   # file name, script
+for f in "$REPO"/shared/init/*.sh "$MINE"/init/*.sh; do if [ -f "$f" ]; then echo "$(basename "$f")$TAB$f"; fi; done > "$INITS"
 echo "$OFF" | while IFS= read -r name; do
   [ -z "$name" ] || cut -f1 "$WANT" "$INITS" | grep -qxF -- "$name" || die "off.txt: '$name' is no skill or init script you'd get"
 done
