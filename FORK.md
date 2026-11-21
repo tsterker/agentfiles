@@ -49,6 +49,7 @@ Colleagues clone the fork and run `bin/sync --me <name>`; they need no `starter`
 
 ```sh
 git fetch starter
+git log --oneline main..starter/main   # what the merge brings in
 git merge starter/main
 git push
 ```
