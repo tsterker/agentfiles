@@ -15,7 +15,7 @@ One line of always-on guidance, shaped `When <situation>: <do>`, loaded into eve
 _Avoid_: instruction, policy, memory
 
 **Harness**:
-An agent app that loads skills and rules: Claude Code, Codex or Cursor.
+An agent app that loads skills and rules: Claude Code, Codex, Cursor or OpenCode.
 _Avoid_: agent, tool, client, IDE
 
 ### Where it comes from
@@ -43,12 +43,16 @@ A person's choice to also get skills from outside their own folder: a colleague'
 _Avoid_: subscribe, follow, import
 
 **Off**:
-A person's choice to not get a skill they would otherwise get, without removing it from the repo.
+A person's choice to not get a skill or init script they would otherwise get, without removing it from the repo.
 _Avoid_: disable, park, mute, blocklist
 
 **Sync**:
-Making a machine's harnesses match the repo for one person: their shared, own, opted-in and upstream skills and rules, minus those turned off.
+Making a machine's harnesses match the repo for one person: their shared, own, opted-in and upstream skills and rules, minus those turned off. It owns the folders and files those harnesses read skills and rules from, all or nothing, from the first `--clean` on.
 _Avoid_: install, deploy, update
+
+**Keep**:
+A name sync leaves alone in the folders it owns, because another tool installs it there, such as an app's own skill.
+_Avoid_: allow, ignore, whitelist, exception
 
 **Init script**:
 A script that sync runs on every run, for setup that links alone can't do; it must be safe to run again, and its failure stops sync.

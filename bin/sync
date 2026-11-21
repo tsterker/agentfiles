@@ -1,15 +1,22 @@
 #!/bin/bash
-# Puts this repo's skills and rules in place for Claude Code, Codex and Cursor, for one person.
+# Puts this repo's skills and rules in place for Claude Code, Codex, Cursor and OpenCode, for one person.
 # Usage: bin/sync [--me <name>] [--clean]
 set -euo pipefail
 
 die() { echo "sync: $*" >&2; exit 1; }
 command -v git >/dev/null || die "needs git on PATH; found none"
+command -v jq >/dev/null || die "needs jq on PATH (macOS 15 and later ship /usr/bin/jq); found none"
 
 REPO=$(cd "$(dirname "$0")/.." && pwd -P)
 CACHE=$HOME/.cache/agentfiles
 SKILL_DIRS="$HOME/.claude/skills $HOME/.agents/skills"
 RULE_DIR=$HOME/.claude/rules
+# What sync owns once you hand it over: every entry in these folders, and these whole files.
+OWNED_DIRS="$SKILL_DIRS $HOME/.codex/skills $HOME/.cursor/skills $RULE_DIR $HOME/.cursor/rules $HOME/.cursor/plugins/local"
+OWNED_FILES="$HOME/.codex/AGENTS.md $HOME/.config/opencode/AGENTS.md $HOME/.claude/CLAUDE.md"
+PLUGIN=.cursor/plugins/local/agentfiles-rules   # Cursor's agent SDK (T3 Code) reads rules only from plugins
+GUARD=.cursor/rules/agentfiles-cli-guard.mdc     # cursor-agent reads only ~/.cursor/rules, so it gets this alone
+WRITTEN=".codex/AGENTS.md .config/opencode/AGENTS.md $PLUGIN $GUARD"
 TAB=$(printf '\t')
 ME= CLEAN=
 
@@ -39,8 +46,8 @@ fi
 MINE=$REPO/people/$ME
 [ -d "$MINE" ] || die "expected your folder people/$ME/; it's missing. Run bin/sync --me $ME to create it"
 
-# Lines of a list file, without comments and blank lines.
-lines() { [ -f "$1" ] || return 0; sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$1" | grep -v -e '^#' -e '^$' || true; }
+# Lines of a list file, without comments, trailing comments and blank lines.
+lines() { [ -f "$1" ] || return 0; sed -e 's/[[:space:]]*#.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$1" | grep -v -e '^$' || true; }
 
 # --- Upstream: copy each upstream.txt line into upstream/ -----------------
 bake() {
@@ -114,13 +121,24 @@ lines "$MINE/opt-in.txt" | while IFS= read -r line; do
   esac
 done
 
-lines "$MINE/off.txt" | while IFS= read -r name; do
-  cut -f1 "$WANT" | grep -qx "$name" || die "off.txt: '$name' is no skill you'd get"
-done
+# --- Init scripts, off and keep ----------------------------------------------
+INITS=$(mktemp)   # name, script
+for f in "$REPO"/shared/init/*.sh "$MINE"/init/*.sh; do if [ -f "$f" ]; then echo "$(basename "$f" .sh)$TAB$f"; fi; done > "$INITS"
+both=$(cut -f1 "$INITS" | sort -u | grep -xF -f <(cut -f1 "$WANT") || true)
+[ -z "$both" ] || die "a skill and an init script are both named '$(echo $both)'; rename one"
+
 OFF=$(lines "$MINE/off.txt")
+for name in $OFF; do
+  cut -f1 "$WANT" "$INITS" | grep -qx "$name" || die "off.txt: '$name' is no skill or init script you'd get"
+done
+KEEP=$(lines "$REPO/shared/keep.txt"; lines "$MINE/keep.txt")
+for name in $KEEP; do
+  cut -f1 "$WANT" | grep -qx "$name" && die "keep.txt: '$name' is also a skill you'd get; drop one"
+done
+
 SKILLS=$(mktemp)
-awk -F"$TAB" -v off="$OFF" '
-  BEGIN { n = split(off, o, "\n"); for (i = 1; i <= n; i++) skip[o[i]] = 1 }
+OFF=$OFF awk -F"$TAB" '   # through the environment: BSD awk rejects a -v value with a newline
+  BEGIN { n = split(ENVIRON["OFF"], o, "\n"); for (i = 1; i <= n; i++) skip[o[i]] = 1 }
   skip[$1] { next }
   ($1 in dir) && dir[$1] != $2 { print "sync: two skills named " $1 ": from " from[$1] " and " $3 > "/dev/stderr"; bad = 1 }
   !($1 in dir) { dir[$1] = $2; from[$1] = $3; print $1 "\t" $2 }
@@ -130,67 +148,126 @@ RULES=$(mktemp)   # link name, file
 for f in "$REPO"/shared/rules/*.md; do if [ -f "$f" ]; then echo "agentfiles-shared-$(basename "$f")$TAB$f"; fi; done >> "$RULES"
 for f in "$MINE"/rules/*.md; do if [ -f "$f" ]; then echo "agentfiles-$ME-$(basename "$f")$TAB$f"; fi; done >> "$RULES"
 
-# --- Links: sync owns the links it made, and only those -------------------
-mkdir -p "$CACHE" $SKILL_DIRS "$RULE_DIR"
-touch "$CACHE/links"
-ours() { [ -L "$1" ] && { grep -qxF "$1$TAB$(readlink "$1")" "$CACHE/links" || case $(readlink "$1") in "$REPO"/*) true ;; *) false ;; esac; }; }   # still points where sync put it
-
+# --- What sync puts in place: links, and files it writes ----------------------
 LINKS=$(mktemp)   # path, target
 for d in $SKILL_DIRS; do awk -F"$TAB" -v d="$d" '{print d "/" $1 "\t" $2}' "$SKILLS"; done >> "$LINKS"
 awk -F"$TAB" -v d="$RULE_DIR" '{print d "/" $1 "\t" $2}' "$RULES" >> "$LINKS"
 
+STAGE=$(mktemp -d)   # the written files, at their paths under ~
+TEXT=$STAGE/.codex/AGENTS.md
+mkdir -p "$STAGE/.codex" "$STAGE/.config/opencode" "$STAGE/$PLUGIN/.cursor-plugin" "$STAGE/$PLUGIN/rules" "$(dirname "$STAGE/$GUARD")"
+cut -f2 "$RULES" | while IFS= read -r f; do cat "$f"; echo; done > "$TEXT"
+cp "$TEXT" "$STAGE/.config/opencode/AGENTS.md"
+printf '{"name":"agentfiles-rules","version":"1.0.0","description":"Rules from %s, written by bin/sync"}\n' "$REPO" > "$STAGE/$PLUGIN/.cursor-plugin/plugin.json"
+{ printf -- '---\nalwaysApply: true\n---\n\n- **agentfiles**: These are the agentfiles rules for %s.\n\n' "$ME"; cat "$TEXT"; } > "$STAGE/$PLUGIN/rules/agentfiles.mdc"
+printf -- '---\nalwaysApply: true\n---\n\n- **agentfiles-missing**: When your context has no rule named **agentfiles**: start every reply with "⚠️ This harness gets none of your agentfiles rules (the cursor-agent CLI reads none). Use the Cursor IDE, T3 Code or another harness."\n' > "$STAGE/$GUARD"
+
+# --- Mine or in the way: all or nothing ----------------------------------------
+mkdir -p "$CACHE/written"
+touch "$CACHE/links"
+ours() {   # a link that still points where sync put it, or a file sync wrote that nobody changed since
+  if [ -L "$1" ]; then
+    grep -qxF "$1$TAB$(readlink "$1")" "$CACHE/links" || case $(readlink "$1") in "$REPO"/*) true ;; *) false ;; esac
+  else
+    [ -e "$CACHE/written/${1#$HOME/}" ] && diff -rq "$1" "$CACHE/written/${1#$HOME/}" >/dev/null 2>&1
+  fi
+}
+kept() { echo "$KEEP" | grep -qxF "$(basename "$1")"; }
+
 FOREIGN=$(mktemp)
-for d in $SKILL_DIRS "$RULE_DIR"; do
+for d in $OWNED_DIRS; do
+  [ ! -L "$d" ] || die "expected a folder at $d; found a link to $(readlink "$d"). Move it, then run sync again"
   for p in "$d"/*; do
-    [ "$p" != "$HOME/.claude/skills/synced" ] || continue   # Claude Code's own copy of the claude.ai account's skills
-    { [ -e "$p" ] || [ -L "$p" ]; } && ! ours "$p" && echo "$p"
+    { [ -e "$p" ] || [ -L "$p" ]; } || continue
+    kept "$p" || ours "$p" || echo "$p"
   done
-done > "$FOREIGN" || true
-if [ -n "$CLEAN" ] && [ -s "$FOREIGN" ]; then
+done > "$FOREIGN"
+for f in $OWNED_FILES; do
+  if [ -e "$f" ] || [ -L "$f" ]; then ours "$f" || echo "$f"; fi
+done >> "$FOREIGN"
+
+if [ -s "$FOREIGN" ] && [ -z "$CLEAN" ]; then
+  while IFS= read -r p; do   # where, what: a link's target, or folder/file
+    case " $OWNED_FILES " in *" $p "*) at=$p ;; *) at=$(dirname "$p") ;; esac
+    if [ -L "$p" ]; then what="-> $(readlink "$p")"; elif [ -d "$p" ]; then what=folder; else what=file; fi
+    echo "$at$TAB$p$TAB$what"
+  done < "$FOREIGN" | sed "s|$HOME|~|g" > "$CACHE/plan.txt"
+  n=$(wc -l < "$FOREIGN" | tr -d ' ')
+  echo "Changed nothing: $n $( [ "$n" = 1 ] && echo thing || echo things ) in your harnesses aren't from this repo."
+  awk -F"$TAB" '   # one line per place, counting links by the folder they point into
+    { o = $3; if (o ~ /^-> /) { n = split(substr(o, 4), c, "/"); o = "link into " c[1] "/" c[2] "/" c[3] (c[1] == "" ? "/" c[4] : "") }
+      if (!($1 in seen)) { seen[$1] = 1; at[++m] = $1 }
+      if (!(($1, o) in cnt)) kinds[$1] = kinds[$1] "\t" o; cnt[$1, o]++ }
+    END { for (i = 1; i <= m; i++) { k = split(substr(kinds[at[i]], 2), ks, "\t"); s = ""
+            for (j = 1; j <= k; j++) { w = ks[j]; if (cnt[at[i], w] > 1) sub(/^[a-z]+/, "&s", w); s = s (j > 1 ? ", " : "") cnt[at[i], ks[j]] " " w }
+            printf "  %-30s %s\n", at[i], s } }' "$CACHE/plan.txt"
+  echo "Each one, with where it points: ~/.cache/agentfiles/plan.txt"
+  echo
+  echo "Sync would link $(wc -l < "$SKILLS" | tr -d ' ') skills: $(cut -f1 "$SKILLS" | sort | paste -sd ' ' -)"
+  echo "and $(wc -l < "$RULES" | tr -d ' ') rule files, written for Codex, OpenCode and Cursor too."
+  echo "Adjust opt-in.txt, upstream.txt, keep.txt or off.txt and run bin/sync again,"
+  echo "or run bin/sync --clean to move them to ${CACHE/#$HOME/~}/removed-<date>/ and take over."
+  exit 1
+fi
+if [ -s "$FOREIGN" ]; then
   aside=$CACHE/removed-$(date +%Y-%m-%d-%H%M%S)
   while IFS= read -r p; do
     mkdir -p "$aside/$(dirname "${p#$HOME/}")" && mv "$p" "$aside/${p#$HOME/}"
   done < "$FOREIGN"
-  echo "Moved $(wc -l < "$FOREIGN" | tr -d ' ') things sync didn't make to $aside"
-  : > "$FOREIGN"
+  echo "Moved $(wc -l < "$FOREIGN" | tr -d ' ') things sync didn't make to ${aside/#$HOME/~}"
 fi
-BLOCKED=$(cut -f1 "$LINKS" | grep -xF -f "$FOREIGN" || true)   # check all before changing any
-[ -z "$BLOCKED" ] || die "in the way and not from this repo; move them, or run bin/sync --clean:
-$(echo "$BLOCKED" | sed 's/^/  /')"
 
+# --- Put it in place ----------------------------------------------------------
+mkdir -p $SKILL_DIRS "$RULE_DIR"
 while IFS="$TAB" read -r p target; do   # remove my links that are no longer wanted
   cut -f1 "$LINKS" | grep -qxF "$p" || { [ -L "$p" ] && [ "$(readlink "$p")" = "$target" ] && rm "$p"; } || true
 done < "$CACHE/links"
 while IFS="$TAB" read -r p target; do ln -sfn "$target" "$p"; done < "$LINKS"
 cp "$LINKS" "$CACHE/links"
-
-# --- Rules as text for Codex and Cursor ------------------------------------
-TEXT=$(mktemp)
-cut -f2 "$RULES" | while IFS= read -r f; do cat "$f"; echo; done > "$TEXT"
-mkdir -p "$HOME/.codex" "$HOME/.cursor/rules"
-codex=$HOME/.codex/AGENTS.md
-touch "$codex"
-awk '/^<!-- agentfiles:start -->$/ {skip = 1} !skip {print} /^<!-- agentfiles:end -->$/ {skip = 0}' "$codex" > "$codex.tmp"
-if [ -s "$TEXT" ]; then
-  { echo '<!-- agentfiles:start -->'; cat "$TEXT"; echo '<!-- agentfiles:end -->'; } >> "$codex.tmp"
-  { printf -- '---\nalwaysApply: true\n---\n\n'; cat "$TEXT"; } > "$HOME/.cursor/rules/agentfiles.mdc"
-else
-  rm -f "$HOME/.cursor/rules/agentfiles.mdc"
-fi
-mv "$codex.tmp" "$codex"
+for w in $WRITTEN; do
+  mkdir -p "$(dirname "$HOME/$w")" && rm -rf "${HOME:?}/$w" && cp -R "$STAGE/$w" "$HOME/$w"
+done
+rm -rf "$CACHE/written" && cp -R "$STAGE" "$CACHE/written"
 
 # --- Init scripts ----------------------------------------------------------
-for f in "$REPO"/shared/init/*.sh "$MINE"/init/*.sh; do
-  [ -f "$f" ] || continue
-  ME=$ME REPO=$REPO bash "$f" || die "init script ${f#$REPO/} failed"
-done
+while IFS="$TAB" read -r -u 3 name f; do   # fd 3, so a script that asks something reads your terminal
+  echo "$OFF" | grep -qxF "$name" && continue
+  ME=$ME REPO=$REPO bash "$f" 3<&- || die "init script ${f#$REPO/} failed"
+done 3< "$INITS"
 
 # --- Report ---------------------------------------------------------------
-if [ -s "$FOREIGN" ]; then
+UNMANAGED=$(mktemp)   # kind, file, name
+{
+  for d in "$HOME/.claude/agents" "$HOME/.codex/agents" "$HOME/.cursor/agents"; do
+    [ ! -d "$d" ] || ls "$d" | sed "s|^|subagents$TAB$d$TAB|"
+  done
+  json() { [ ! -f "$2" ] || jq -r "$3" "$2" 2>/dev/null | sed "s|^|$1$TAB$2$TAB|"; }
+  json hooks "$HOME/.claude/settings.json" '.hooks // {} | keys[]'
+  json hooks "$HOME/.codex/hooks.json" '.hooks // {} | keys[]'
+  json "MCP servers" "$HOME/.claude.json" '.mcpServers // {} | keys[]'
+  json "MCP servers" "$HOME/.cursor/mcp.json" '.mcpServers // {} | keys[]'
+  json "MCP servers" "$HOME/.config/opencode/opencode.json" '.mcp // {} | keys[]'
+  json plugins "$HOME/.claude/settings.json" '.enabledPlugins // {} | to_entries[] | select(.value) | .key'
+  toml() {   # names of the enabled [<table>.<name>] entries in a TOML file
+    [ ! -f "$3" ] || awk -v t="$2" '
+      function flush() { if (n != "" && on) print n }
+      /^\[/ { flush(); n = ""; on = 1; h = $0; sub(/[[:space:]]*$/, "", h)
+              if (index(h, "[" t ".") == 1) { n = substr(h, length(t) + 3, length(h) - length(t) - 3)
+                if (n !~ /"/ && n ~ /\./) n = ""; gsub(/"/, "", n) } }
+      /^enabled[[:space:]]*=[[:space:]]*false/ { on = 0 }
+      END { flush() }' "$3" | sed "s|^|$1$TAB$3$TAB|"
+  }
+  toml "MCP servers" mcp_servers "$HOME/.codex/config.toml"
+  toml plugins plugins "$HOME/.codex/config.toml"
+} > "$UNMANAGED"
+if [ -s "$UNMANAGED" ]; then
   echo
-  echo "Not from this repo (bin/sync --clean moves them to $CACHE/):"
-  sed 's/^/  /' "$FOREIGN"
+  echo "Not managed by sync (an init script can manage them):"
+  awk -F"$TAB" -v home="$HOME" '
+    { k = $1 "\t" $2; if (!(k in seen)) { seen[k] = 1; order[++n] = k } names[k] = names[k] (names[k] ? ", " : "") $3 }
+    END { for (i = 1; i <= n; i++) { split(order[i], a, "\t"); f = a[2]; sub("^" home, "~", f); printf "  %-11s %s: %s\n", a[1], f, names[order[i]] } }' <(sort -s -t"$TAB" -k1,1 "$UNMANAGED")
 fi
+OFFS=$(for name in $OFF; do if cut -f1 "$INITS" | grep -qx "$name"; then echo "$name (init script)"; else echo "$name (skill)"; fi; done | paste -sd ',' - | sed 's/,/, /g')
 echo
-echo "Synced $(wc -l < "$SKILLS" | tr -d ' ') skills and $(wc -l < "$RULES" | tr -d ' ') rule files for $ME. New ones load in a new chat."
-rm -f "$WANT" "$SKILLS" "$RULES" "$LINKS" "$FOREIGN" "$TEXT"
+echo "Synced $(wc -l < "$SKILLS" | tr -d ' ') skills and $(wc -l < "$RULES" | tr -d ' ') rule files for $ME${OFFS:+ (off: $OFFS)}. New ones load in a new chat."
+rm -rf "$WANT" "$INITS" "$SKILLS" "$RULES" "$LINKS" "$STAGE" "$FOREIGN" "$UNMANAGED"
