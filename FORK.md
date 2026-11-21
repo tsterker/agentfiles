@@ -34,8 +34,8 @@ jj git remote add origin git@<host>:<group>/<project>.git
 jj bookmark untrack main --remote=starter
 jj bookmark track main --remote=origin
 jj config set --repo git.fetch '["origin", "starter"]'
-jj config set --repo 'revset-aliases."trunk()"' main@origin
 jj git push -b main
+jj config set --repo 'revset-aliases."trunk()"' main@origin
 ```
 
 jj moves a tracked bookmark on every fetch, so `main` tracks only the fork's; jj then also refuses to push `main` to the starter.
