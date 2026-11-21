@@ -74,7 +74,7 @@ It needs `git` and stops at the start if it's missing.
 ## Remove it
 
 ```sh
-while read -r l; do rm -f "$l"; done < ~/.cache/agentfiles/links
+while IFS="$(printf '\t')" read -r l t; do [ "$(readlink "$l")" != "$t" ] || rm "$l"; done < ~/.cache/agentfiles/links
 rm -rf ~/.cursor/rules/agentfiles.mdc ~/.cache/agentfiles
 ```
 

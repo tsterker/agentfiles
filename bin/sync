@@ -133,7 +133,7 @@ for f in "$MINE"/rules/*.md; do if [ -f "$f" ]; then echo "agentfiles-$ME-$(base
 # --- Links: sync owns the links it made, and only those -------------------
 mkdir -p "$CACHE" $SKILL_DIRS "$RULE_DIR"
 touch "$CACHE/links"
-ours() { [ -L "$1" ] && { grep -qxF "$1" "$CACHE/links" || case $(readlink "$1") in "$REPO"/*) true ;; *) false ;; esac; }; }
+ours() { [ -L "$1" ] && { grep -qxF "$1$TAB$(readlink "$1")" "$CACHE/links" || case $(readlink "$1") in "$REPO"/*) true ;; *) false ;; esac; }; }   # still points where sync put it
 
 LINKS=$(mktemp)   # path, target
 for d in $SKILL_DIRS; do awk -F"$TAB" -v d="$d" '{print d "/" $1 "\t" $2}' "$SKILLS"; done >> "$LINKS"
@@ -157,11 +157,11 @@ BLOCKED=$(cut -f1 "$LINKS" | grep -xF -f "$FOREIGN" || true)   # check all befor
 [ -z "$BLOCKED" ] || die "in the way and not from this repo; move them, or run bin/sync --clean:
 $(echo "$BLOCKED" | sed 's/^/  /')"
 
-while IFS= read -r p; do   # remove my links that are no longer wanted
-  cut -f1 "$LINKS" | grep -qxF "$p" || { [ -L "$p" ] && rm "$p"; } || true
+while IFS="$TAB" read -r p target; do   # remove my links that are no longer wanted
+  cut -f1 "$LINKS" | grep -qxF "$p" || { [ -L "$p" ] && [ "$(readlink "$p")" = "$target" ] && rm "$p"; } || true
 done < "$CACHE/links"
 while IFS="$TAB" read -r p target; do ln -sfn "$target" "$p"; done < "$LINKS"
-cut -f1 "$LINKS" > "$CACHE/links"
+cp "$LINKS" "$CACHE/links"
 
 # --- Rules as text for Codex and Cursor ------------------------------------
 TEXT=$(mktemp)
