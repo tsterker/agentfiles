@@ -59,6 +59,10 @@ Or just ask your agent: "make that a skill of mine", "turn off X", "use Ana's re
 
 Skill names must be unique across everything you get; sync stops on a clash. Starting your own with your name (`tim-foo`) avoids most of them.
 
+## Tune it as you go
+
+Your agent's habits come from these rules and skills, so you change them by talking to it. When it does something you don't like, mid-task or after (asks too often, plays it too safe, skips a step), ask it "why did you do that, which rule or skill made you?", then "change that for me". After a longer session, run the `retro` skill (`/retro` in Claude Code) and it suggests what to improve. Changes land in your folder; for a shared rule, the agent prepares a change for the team.
+
 ## What sync changes on your Mac
 
 - Links to your skills in `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (Codex). Cursor reads both, so it lists each skill twice.

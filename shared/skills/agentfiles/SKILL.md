@@ -1,6 +1,6 @@
 ---
 name: agentfiles
-description: Agentfiles, the repo of the user's skills and rules. Use to add, change or remove a skill or rule, use a colleague's skill, turn one off, copy skills in from another git repo, or update the repo and explain what changed. Offer it when the user says "make that a skill/rule", "remember to always…", "turn off X", "use Ana's Y", "update agentfiles", or a lesson worth keeping comes up; act once they agree.
+description: Agentfiles, the repo of the user's skills and rules. Use to add, change or remove a skill or rule, use a colleague's skill, turn one off, copy skills in from another git repo, update the repo and explain what changed, or trace why the agent behaves as it does and tune that. Offer it when the user says "make that a skill/rule", "remember to always…", "turn off X", "use Ana's Y", "update agentfiles", "why did you do that", "stop doing X", or a lesson worth keeping comes up; act once they agree.
 ---
 
 # Agentfiles
@@ -17,6 +17,15 @@ First, **find the repo and me.** The repo is `git -C "$(cd <this skill's folder>
 3. **Write it**, then run `bin/sync`. It stops with one line naming any problem; fix that and run it again until it ends with "Synced".
 4. **Commit** with a Conventional Commits message scoped to the folder, e.g. `feat(ana): add release-notes skill` or `feat(shared): add review rule`. A `shared/` change goes on a new branch named `<me>/<topic>`: tell the user it needs the team's agreement through a merge request. Leave pushing to the user.
 5. **Tell the user** what changed and that a new chat loads it.
+
+## Tune behaviour
+
+1. **Find the cause.** Search the rules and skills the user gets (`shared/`, `people/<me>/`, the colleagues in `opt-in.txt`) for what led to the behaviour, and quote those lines. When none did, say it's the agent's default and that a rule can change it.
+2. **Propose the smallest change** and its effect:
+   - the user's own rule or skill: edit it;
+   - a shared rule: a personal rule that narrows it for the user now, plus, when it would help everyone, a shared change for the team;
+   - a shared or upstream skill: a line in `off.txt`, or a copy in `people/<me>/skills/` under a new name that the user owns (an upstream copy is replaced on the next refresh).
+3. Once they agree, continue with steps 3 to 5 of **Change something**.
 
 ## Update
 

@@ -29,6 +29,7 @@ if [ -n "$ME" ]; then
     cp -R "$REPO/bin/person-template" "$REPO/people/$ME"
     find "$REPO/people/$ME" -type f -exec sed -i '' "s/{{me}}/$ME/g" {} +
     echo "Created people/$ME/. Make rules/me.md yours: add the names you go by."
+    echo "When your agent does something you don't like, ask it why, then ask it to change that."
   fi
 elif [ -f "$REPO/.me" ]; then
   ME=$(cat "$REPO/.me")
