@@ -31,6 +31,7 @@ people/<you>/                    yours; push without asking
   opt-in.txt                     skills from outside your folder
   off.txt                        skills and init scripts you don't want
 bin/sync
+bin/probe                        checks that every harness sees what sync put in place
 ```
 
 `opt-in.txt`, `off.txt`, `keep.txt` and `upstream.txt` explain their own format in comments. Everything after a `#` is skipped.
@@ -59,6 +60,7 @@ Or just ask your agent: "make that a skill of mine", "turn off X", "use Ana's re
 | run setup that links can't do | a script in `init/`; it must be safe to run again, and its failure stops sync |
 | let an app install its skill where sync owns everything | the skill's name in `keep.txt`, and an `init/` script that checks the app did |
 | give a skill or rule to everyone | move it into `shared/`, agreed with the team |
+| check that every harness sees your skills and rules | `bin/probe`, once sync has set up; it asks each harness for a throwaway rule and skill, then removes them |
 | take over from another setup | `bin/sync --clean` moves what sync didn't make to `~/.cache/agentfiles/removed-<date>/` |
 
 Skill names must be unique across everything you get; sync stops on a clash. Starting your own with your name (`tim-foo`) avoids most of them.

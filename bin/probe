@@ -1,0 +1,98 @@
+#!/bin/bash
+# Proves that what bin/sync puts in place reaches each harness on this machine.
+# Usage: bin/probe
+set -euo pipefail
+
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  B=$(printf '\033[1m') D=$(printf '\033[2m') R=$(printf '\033[31m') G=$(printf '\033[32m') Y=$(printf '\033[33m') C=$(printf '\033[36m') N=$(printf '\033[0m')
+else B= D= R= G= Y= C= N=; fi
+die() { echo "${R}probe: $*${N}" >&2; exit 1; }
+section() { printf '\n%s── %s %s%s\n' "${2:-$B$C}" "$1" "$(printf '%*s' $((60 - ${#1})) '' | sed 's/ /─/g')" "$N"; }
+
+REPO=$(cd "$(dirname "$0")/.." && pwd -P)
+[ -f "$REPO/.me" ] || die "who are you? Run bin/sync --me <name> once"
+ME=$(cat "$REPO/.me")
+T3HOME=${T3CODE_HOME:-$HOME/.t3}
+
+section "What this checks"
+echo "  Sync writes your skills and rules where each harness reads them. This asks each harness"
+echo "  whether it actually sees them:"
+echo "  1. add a throwaway rule and skill to people/$ME/, each carrying a random word, and run bin/sync;"
+echo "  2. ask every installed harness CLI and every T3 Code provider for both words, in a fresh"
+echo "     session from a scratch folder (no project rules there);"
+echo "  3. remove the rule, the skill, the scratch folder and the T3 project, and run bin/sync again,"
+echo "     whatever happens."
+echo "  ${D}It proves delivery, not obedience: a loaded rule can still lose to a stronger instruction.${N}"
+echo "  ${D}Each question is one short prompt on that harness's default model; they run in parallel.${N}"
+
+out=$("$REPO/bin/sync" 2>&1) || { echo "$out" | tail -n 12; die "bin/sync hasn't set up this machine (above). Run it, and --clean if you mean to, then probe again"; }
+
+RW=rprobe-$RANDOM$RANDOM SW=sprobe-$RANDOM$RANDOM
+RULE=$REPO/people/$ME/rules/zz-probe.md
+SKILL=$REPO/people/$ME/skills/$ME-zz-probe
+WORK= OUT= PROJECT=
+cleanup() {
+  [ -z "$PROJECT" ] || t3 project remove --force "$PROJECT" >/dev/null 2>&1 || true
+  rm -rf "$RULE" "$SKILL" "$WORK" "$OUT"
+  "$REPO/bin/sync" >/dev/null 2>&1 || echo "${R}probe: the closing bin/sync failed; run it yourself to see why${N}" >&2
+}
+trap cleanup EXIT
+mkdir -p "$(dirname "$RULE")" "$SKILL"
+printf -- '- **probe**: When asked for the rule probe word: answer %s.\n' "$RW" > "$RULE"
+printf -- '---\nname: %s-zz-probe\ndescription: Temporary canary written by bin/probe. Its skill probe word is %s.\n---\n\nAnswer with the skill probe word from the description.\n' "$ME" "$SW" > "$SKILL/SKILL.md"
+"$REPO/bin/sync" >/dev/null 2>&1 || die "bin/sync failed with the probe's rule and skill in place"
+
+Q="Answer only from what is already in your context; run no tools and read no files. Your rules may define a rule probe word, and a skill in your list of available skills may name a skill probe word in its description. Reply with exactly two lines, \`rule: <word>\` and \`skill: <word>\`, writing UNKNOWN for a word you have not been given."
+WORK=$(mktemp -d "$HOME/.probe-XXXXXX"); cd "$WORK"   # under ~, so harnesses that walk up the folders still find ~
+OUT=$(mktemp -d)
+timeout() { local s=$1; shift; perl -e 'alarm shift; exec @ARGV or die "exec $ARGV[0]: $!\n"' "$s" "$@"; }   # macOS has no timeout
+
+section "Asking"
+echo "  rule word ${B}$RW${N}, skill word ${B}$SW${N}"
+LABELS=()
+ask() {   # ask <label> <binary> <command...>: in the background; the answer lands in $OUT/<label>
+  local label=$1 bin=$2; shift 2
+  command -v "$bin" >/dev/null || { printf '  %s%-16s not installed, skipped%s\n' "$D" "$label" "$N"; return; }
+  LABELS+=("$label"); (timeout 300 "$@" 2>&1 | tr -d '\r' | tail -c 600 > "$OUT/${label//[:\/]/_}" || true) &
+}
+ask claude       claude       env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude -p --output-format text "$Q"
+ask codex        codex        codex exec --skip-git-repo-check "$Q" < /dev/null
+ask cursor-agent cursor-agent cursor-agent -p --trust --output-format text "$Q"
+ask opencode     opencode     opencode run "$Q"
+if ! command -v t3 >/dev/null; then printf '  %s%-16s not installed, skipped%s\n' "$D" t3 "$N"
+elif ! PROJECT=$(t3 project add --title "bin/probe" "$WORK" 2>/dev/null | grep -oE '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}' | head -1) || [ -z "$PROJECT" ]; then
+  PROJECT=; printf '  %s%-16s no running T3 Code, skipped%s\n' "$D" t3 "$N"
+else
+  for p in claudeAgent codex cursor opencode; do
+    m=$(jq -r 'select(.enabled and .status == "ready") | .models[0].slug // empty' "$T3HOME/caches/$p.json" 2>/dev/null || true)
+    [ -n "$m" ] || { printf '  %s%-16s not enabled in T3 Code, skipped%s\n' "$D" "t3:$p" "$N"; continue; }
+    ask "t3:$p" t3 sh -c 'printf "%s" "$1" | t3 thread start --title "bin/probe" --provider "$2" --model "$3" --wait "$4" -' _ "$Q" "$p" "$m" "$PROJECT"
+  done
+fi
+echo "  ${D}waiting for ${#LABELS[@]} answers, up to 5 minutes…${N}"
+wait
+
+section "Results"
+fail=0
+verdict() {   # verdict <label> <word> <rule|skill>
+  local f=$OUT/${1//[:\/]/_}
+  if grep -q "$2" "$f" 2>/dev/null; then echo ok
+  elif [ "$1/$3" = cursor-agent/rule ] && grep -q "agentfiles rules" "$f" 2>/dev/null; then echo warns
+  elif grep -q UNKNOWN "$f" 2>/dev/null; then echo MISS
+  else echo "no answer"; fi
+}
+paint() { case $1 in ok) echo "$G" ;; warns) echo "$Y" ;; *) echo "$R" ;; esac; }
+printf '  %s%-16s %-10s %s%s\n' "$D" harness rule skill "$N"
+for label in ${LABELS[@]+"${LABELS[@]}"}; do
+  r=$(verdict "$label" "$RW" rule) s=$(verdict "$label" "$SW" skill)
+  printf '  %-16s %s%-10s%s %s%s%s\n' "$label" "$(paint "$r")" "$r" "$N" "$(paint "$s")" "$s" "$N"
+  case "$r $s" in *MISS*|*"no answer"*) fail=1; echo "  ${D}  said: $(tail -n 3 "$OUT/${label//[:\/]/_}" | tr '\n' ' ' | cut -c1-110)${N}" ;; esac
+done
+echo
+echo "  ${G}ok${N}         the harness named the word: it loads what sync wrote for it."
+echo "  ${Y}warns${N}      cursor-agent reads no plugin rules, so it has none of yours and says so in every reply."
+echo "  ${R}MISS${N}       the harness answered without the word: it doesn't load that file, or something outranks it."
+echo "  ${R}no answer${N}  the harness didn't answer (not logged in, an error, or 5 minutes passed); see what it said."
+section "Cleaning up"
+echo "  Removing the probe's rule, skill and scratch folder, and running bin/sync again."
+exit $fail
