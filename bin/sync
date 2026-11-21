@@ -27,7 +27,7 @@ if [ -n "$ME" ]; then
   echo "$ME" > "$REPO/.me"
   if [ ! -d "$REPO/people/$ME" ]; then
     cp -R "$REPO/bin/person-template" "$REPO/people/$ME"
-    sed "s/{{me}}/$ME/g" "$REPO/bin/person-template/rules/me.md" > "$REPO/people/$ME/rules/me.md"
+    find "$REPO/people/$ME" -type f -exec sed -i '' "s/{{me}}/$ME/g" {} +
     echo "Created people/$ME/. Make rules/me.md yours: add the names you go by."
   fi
 elif [ -f "$REPO/.me" ]; then
@@ -67,6 +67,7 @@ bake() {
     find "$tmp/$sub" -name SKILL.md -not -path '*/.git/*' | grep -q . || die "no SKILL.md under $line"
     rm -rf "${out:?}/$slug" && mkdir -p "$out/$slug"
     (cd "$tmp/$sub" && tar --exclude .git -cf - .) | (cd "$out/$slug" && tar -xf -)
+    [ -z "$sub" ] || cp "$tmp"/LICENSE* "$out/$slug/" 2>/dev/null || true   # keep the licence notice with the copy
     echo "$slug $(git -C "$tmp" rev-parse HEAD) $line" >> "$new"
     rm -rf "$tmp"
     echo "Copied $line into ${out#$REPO/}/$slug; commit it."

@@ -1,6 +1,7 @@
 # Skills to copy in from other git repos, one per line. bin/sync copies each into upstream/
 # next to this file and records its commit in upstream/sources.txt; commit both.
-#   https://github.com/owner/repo                                the whole repo, default branch
-#   https://github.com/owner/repo/tree/v1.2.0/skills/writing     one folder, at a tag, branch or sha
-#   https://gitlab.example.com/group/repo/-/tree/main/skills     GitLab's form works too
+#   https://github.com/mattpocock/skills                                           a whole repo, default branch
+#   https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity           one folder of skills, at a tag
+#   https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grilling  one skill
+# After /tree/ comes a tag, branch or sha; GitLab's /-/tree/ links work too.
 # For a newer copy: delete its folder under upstream/, then bin/sync.
