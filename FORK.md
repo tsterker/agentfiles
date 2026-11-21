@@ -45,6 +45,8 @@ Colleagues clone the fork and run `bin/sync --me <name>`; they need no `starter`
 
 ## Merge the starter's changes
 
+In the fork's clone:
+
 **git**
 
 ```sh
