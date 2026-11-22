@@ -67,7 +67,7 @@ fi
 if [ -n "$REPO" ] && [ ! -e "$TEAM/README.md" ]; then   # what the repo is, for whoever opens it
   url=$(git -C "$AGENTFILES" remote get-url origin 2>/dev/null | sed -e 's|^git@\([^:]*\):|https://\1/|' -e 's|\.git$||' || true)
   origin=$(git -C "$TEAM" remote get-url origin 2>/dev/null || echo "<this repo's clone URL>")
-  sed -e "s|{{folder}}|$(basename "$TEAM")|g" -e "s|{{agentfiles}}|${url:-https://github.com/tsterker/agentfiles-starter}|g" -e "s|{{origin}}|$origin|g" \
+  sed -e "s|{{folder}}|$(basename "$TEAM")|g" -e "s|{{agentfiles}}|${url:-https://github.com/tsterker/agentfiles}|g" -e "s|{{origin}}|$origin|g" \
     "$AGENTFILES/bin/templates/README.md" > "$TEAM/README.md"
   welcome="${welcome:+$welcome
   }Created README.md in $TEAM: what this repo is and how to set it up."
