@@ -1,6 +1,6 @@
 # Agentfiles
 
-One repo, forked by a team, that gives everyone's coding agents the same skills and rules, and gives each person a space of their own for skills and rules that colleagues can use too.
+A tool, cloned once and never edited, that gives everyone's coding agents on a team the same skills and rules from the team's own repo, where each person also has a space of their own that colleagues can use too.
 
 ## Language
 
@@ -11,57 +11,73 @@ A folder with a `SKILL.md` that teaches an agent one kind of task; the agent see
 _Avoid_: command, prompt, plugin
 
 **Rule**:
-One line of always-on guidance, shaped `When <situation>: <do>`, loaded into every agent session.
+One line of always-on guidance, shaped `When <situation>: <do>` and named in bold, loaded into every agent session.
 _Avoid_: instruction, policy, memory
 
 **Harness**:
 An agent app that loads skills and rules: Claude Code, Codex, Cursor or OpenCode.
 _Avoid_: agent, tool, client, IDE
 
+**Init script**:
+A script that sync runs on every run, for setup that links alone can't do; it must be safe to run again, and its failure stops sync.
+_Avoid_: plugin, hook, installer
+
 ### Where it comes from
 
 **Starter**:
-The public repo every fork comes from: the sync scripts in `bin/`, the docs, and a default `shared/`.
+The public tool: the sync scripts, the core, the presets it ships and the docs. Teams pull it and never edit it.
 _Avoid_: upstream, template, base
 
-**Fork**:
-A team's own copy of the starter on its own git host, which adds the team's shared and people content and merges the starter's changes in.
-_Avoid_: mirror, clone, copy
+**Core**:
+What the starter gives everyone, with no way to turn it off: the `agentfiles` skill and the names the harnesses themselves keep in the folders sync owns.
+_Avoid_: defaults, base, built-ins
+
+**Team repo**:
+A team's own git repository of shared, person and preset folders, which the starter reads.
+_Avoid_: fork, config repo, dotfiles
+
+**Source**:
+A folder that brings skills, rules and init scripts, and an `agentfiles.txt` saying what else it uses: shared, a person's folder, a preset, a folder on disk, or a git repository or part of one.
+_Avoid_: package, module, bundle
 
 **Shared**:
-The part of the repo everyone gets: skills and rules the team agreed on.
-_Avoid_: team, global, core
+The source everyone on the team gets: what the team agreed on.
+_Avoid_: team, global, common
 
 **Person**:
-A colleague with a folder of their own in the repo, where they change anything without asking.
+A colleague with a folder of their own in the team repo, where they change anything without asking.
 _Avoid_: user, member, owner
 
 **Me**:
 The person a machine syncs for; an agent on that machine works for them.
 _Avoid_: current user, self, account
 
-**Upstream**:
-Skills from another git repository, copied into the repo from a recipe and committed like hand-made ones, kept apart from them.
-_Avoid_: third-party, external, dependency, vendor, baked
+**Preset**:
+A source with a name and no owner, taken whole with one line: the starter ships some, and a team can add its own.
+_Avoid_: profile, bundle, pack, catalog
 
 ### How it reaches a machine
 
-**Opt-in**:
-A person's choice to also get skills from outside their own folder: a colleague's hand-made skill by name, or the skills in a folder on their own disk; nobody gets a colleague's skill without one.
-_Avoid_: subscribe, follow, import
+**Use**:
+A line choosing a source to get besides shared and one's own folder; nothing reaches anyone without one, theirs or their team's.
+_Avoid_: opt-in, subscribe, import
+
+**Follow**:
+A use of a git branch rather than a tag or commit, fetched again on every sync.
+_Avoid_: track, latest, float
 
 **Off**:
-A person's choice to not get a skill or init script they would otherwise get, without removing it from the repo.
+A line dropping a skill, rule, init script or preset one would otherwise get, wherever it comes from.
 _Avoid_: disable, park, mute, blocklist
-
-**Sync**:
-Making a machine's harnesses match the repo for one person: their shared, own, opted-in and upstream skills and rules, minus those turned off. It owns the folders and files those harnesses read skills and rules from, all or nothing, from the first sync that sets up: right away on a machine with nothing in the way, otherwise after `--clean`.
-_Avoid_: install, deploy, update
 
 **Keep**:
 A name sync leaves alone in the folders it owns, because another tool installs it there, such as an app's own skill.
 _Avoid_: allow, ignore, whitelist, exception
 
-**Init script**:
-A script that sync runs on every run, for setup that links alone can't do; it must be safe to run again, and its failure stops sync.
-_Avoid_: plugin, hook, installer
+**Format**:
+The version of the `agentfiles.txt` language a file is written in; the starter reads exactly one and stops on any other.
+_Avoid_: schema, version, edition
+
+**Sync**:
+Making a machine's harnesses match the team repo for one person: the core, shared, their own folder and every source these use, minus what is off. It owns the folders and files those harnesses read skills and rules from, all or nothing, from the first sync that sets up: right away on a machine with nothing in the way, otherwise after `--clean`.
+_Avoid_: install, deploy, update
