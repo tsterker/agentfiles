@@ -39,12 +39,12 @@ each of shared/, people/<x>/ and presets/<name>/ (a source):
 
 ## agentfiles.txt
 
-Every line is `<verb> <kind> <what>`; everything after a `#` is skipped. Line order doesn't matter, `off` always wins wherever it sits, and every name must be unique across what you get: sync stops on a clash naming both. Starting your own skills with your name (`tim-foo`) avoids most clashes.
+Every line is `<verb> <kind> <what>`; everything after a `#` is skipped. Line order doesn't matter, and `off` always wins wherever it sits, except `off preset`, which works only in `shared/` and your own file. Every name must be unique across what you get: sync stops on a clash naming both, and `off` drops every skill or rule of that name, so a replacement for one you turn off needs a new name. Starting your own with your name (`tim-foo`) avoids most clashes.
 
 ```
 format v1                                   the file's format; sync stops on any other (CHANGELOG.md)
 use    preset recommended                   a preset from the starter's or the team repo's presets/
-use    person ana                           a colleague's whole folder: skills and rules
+use    person ana                           a colleague's skills and rules; their own lines and init scripts stay theirs
 use    skill  ana-review                    one skill from a colleague's folder
 use    folder ~/projects/my-skills          a folder on your disk, linked live
 use    git    https://github.com/o/r/tree/v1.3.2/skills    a tag or full commit, fetched once into ~/.cache/agentfiles
@@ -53,7 +53,7 @@ off    skill  grilling                      also: off rule <name>, off init <fil
 keep   my-app                               a name another tool installs in the folders sync owns
 ```
 
-A source uses other sources the same way, read once each. A `git` source is a repo, or a `/tree/<ref>/<path>` (GitLab: `/-/tree/`) link copied from the browser; a ref containing `/` isn't supported. Nothing from git is committed: to own a skill's text, copy it into your folder under a new name.
+A preset, folder or git source uses other sources the same way, read once each. A `git` source is a repo, or a `/tree/<ref>/<path>` (GitLab: `/-/tree/`) link copied from the browser; a ref containing `/` isn't supported. Nothing from git is committed: to own a skill's text, copy it into your folder under a new name.
 
 **Following a branch** means whoever can push to it shapes your agent on your next sync, and teammates who synced at different times hold different commits. Sync lists every followed source in its summary, stops when a fetch fails, and refuses to run a followed source's init scripts: `off init` them, or pin the source with `use`.
 
@@ -69,7 +69,7 @@ It remembers both, creates `shared/agentfiles.txt` (with `use preset recommended
 
 **Your existing setup.** If none of your harnesses has skills or rules yet, the first `bin/sync` sets everything up. Otherwise it changes nothing in your harnesses and lists what it would put in place and what's in its way. Adjust your `agentfiles.txt` and run it again until the list looks right. Then `bin/sync --clean` moves what's in its way to `~/.cache/agentfiles/removed-<date>/`; nothing is deleted. From then on, a plain `bin/sync` keeps it that way.
 
-After that, run `bin/sync` whenever you pull either repo or add or remove a skill or rule, then start a new chat. Edits inside an existing skill work at once, and so do rule edits for Claude Code; Codex, OpenCode and Cursor get rule edits on the next sync.
+After that, run `bin/sync` whenever you pull either repo or add or remove a skill or rule, then start a new chat. Edits inside an existing skill work at once, and so do rule edits for Claude Code, except in a rule file with a rule turned off; Codex, OpenCode and Cursor get rule edits on the next sync.
 
 Or just ask your agent: "make that a skill of mine", "turn off X", "use Ana's review skill". The core `agentfiles` skill knows both repos.
 
@@ -103,7 +103,7 @@ It lists the subagents, hooks, MCP servers and plugins it finds, and runs your i
 
 ```sh
 while IFS="$(printf '\t')" read -r l t; do [ "$(readlink "$l")" != "$t" ] || rm "$l"; done < ~/.cache/agentfiles/links
-rm -rf ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.cursor/plugins/local/agentfiles-rules ~/.cursor/rules/agentfiles-cli-guard.mdc ~/.cache/agentfiles/links ~/.cache/agentfiles/written ~/.cache/agentfiles/rules ~/.cache/agentfiles/git
+rm -rf ~/.codex/AGENTS.md ~/.config/opencode/AGENTS.md ~/.cursor/plugins/local/agentfiles-rules ~/.cursor/rules/agentfiles-cli-guard.mdc ~/.cache/agentfiles/{links,written,rules,git,follow}
 ```
 
 What `--clean` moved aside stays in `~/.cache/agentfiles/removed-<date>/`.

@@ -24,7 +24,7 @@ First, **find the two repos and me.** The starter is `git -C "$(cd <this skill's
 1. **Find the cause.** Search what the user gets for what led to the behaviour, and quote those lines: the core, `shared/`, `people/<me>/`, and every source their `agentfiles.txt` files use, starter presets and fetched git sources (`~/.cache/agentfiles/git/`) included. When none did, say it's the agent's default and that a rule can change it.
 2. **Propose the smallest change** and its effect:
    - the user's own rule or skill: edit it;
-   - a rule or skill from shared, a preset, a colleague or git: an `off` line in their `agentfiles.txt`, plus their own replacement in `people/<me>/` when they want different wording; when it would help everyone, also a shared change for the team, or a pull request to the starter for its presets.
+   - a rule or skill from shared, a preset, a colleague or git: an `off` line in their `agentfiles.txt`, plus their own replacement in `people/<me>/` under a new name when they want different wording (`off` drops every rule or skill of its name); when it would help everyone, also a shared change for the team, or a pull request to the starter for its presets.
 3. Once they agree, continue with steps 3 to 5 of **Change something**.
 
 ## Update

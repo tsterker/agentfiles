@@ -84,15 +84,18 @@ fi
 lines() { [ -f "$1" ] || return 0; sed -e 's/[[:space:]]*#.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$1" | grep -v -e '^$' || true; }
 tilde() { sed "s|$HOME|~|g"; }
 has() { awk -F"$TAB" -v c="$2" -v v="$3" '$c == v {f = 1} END {exit !f}' "$1"; }   # has <file> <column> <value>
-rel() { echo "$1" | sed -e "s|^$TEAM/||" -e "s|^$STARTER/|starter: |" -e "s|^$CACHE/git/|git: |" -e "s|^$HOME|~|"; }
+rel() { echo "$1" | sed -e "s|^$TEAM/||" -e "s|^$STARTER/|starter: |" -e "s|^$CACHE/git/|git: |" -e "s|^$CACHE/follow/|followed: |" -e "s|^$HOME|~|"; }
 
 # --- Sources: what each one brings, then what it uses -------------------------
-SRC=$(mktemp) SKL=$(mktemp) RUL=$(mktemp) INI=$(mktemp) OFFS=$(mktemp) KEEPS=$(mktemp) USED=$(mktemp) FOLLOWED=$(mktemp) FETCHED=$(mktemp) OFFP=$(mktemp) NEWP=$(mktemp)
+W=$(mktemp -d)   # this run's scratch files
+trap 'rm -rf "$W"' EXIT
+SRC=$W/sources SKL=$W/skills-found RUL=$W/rule-files INI=$W/inits-found OFFS=$W/offs KEEPS=$W/keeps USED=$W/presets-used FOLLOWED=$W/followed FETCHED=$W/fetched
+touch "$SRC" "$SKL" "$RUL" "$INI" "$OFFS" "$KEEPS" "$USED" "$FOLLOWED" "$FETCHED"
 GOT=
 
 fetch_git() {   # fetch_git <url> <follow 0|1> <where>: sets GOT to the source's folder in the cache
-  local url=$1 follow=$2 where=$3 repo rest ref sub base tmp
-  case $url in https://*|http://*|ssh://*|git@*) ;; *) die "$where: 'git' expects an https or ssh URL; got '$url'" ;; esac
+  local url=$1 follow=$2 where=$3 repo rest ref sub base tmp sha
+  case $url in https://*|ssh://*|git@*) ;; *) die "$where: 'git' expects an https or ssh URL; got '$url'" ;; esac
   case $url in
     */-/tree/*) repo=${url%%/-/tree/*}; rest=${url#*/-/tree/} ;;
     */tree/*)   repo=${url%%/tree/*};   rest=${url#*/tree/} ;;
@@ -101,13 +104,14 @@ fetch_git() {   # fetch_git <url> <follow 0|1> <where>: sets GOT to the source's
   ref=${rest%%/*} sub=
   case $rest in */*) sub=${rest#*/} ;; esac
   [ -n "$ref" ] || [ "$follow" = 1 ] || die "$where: 'use git $url' names no tag or commit, so it would track the default branch. Link a /tree/<tag or commit>, or write 'follow git $url'"
-  base=$CACHE/git/$(echo "$repo" | sed -e 's|^[a-z+]*://||' -e 's|^[^/]*@||' -e 's|:|/|' -e 's|\.git$||')@${ref:-HEAD}
-  if [ "$follow" = 1 ]; then
+  base=$(echo "$repo" | sed -e 's|^[a-z+]*://||' -e 's|^[^/]*@||' -e 's|:|/|' -e 's|\.git$||')@${ref:-HEAD}
+  if [ "$follow" = 1 ]; then   # followed checkouts live apart, so a pinned line never reads one
+    base=$CACHE/follow/$base
     echo "$url" >> "$FOLLOWED"
-    grep -qxF "$base" "$FETCHED" && { GOT=$base${sub:+/$sub}; [ -d "$GOT" ] || die "$where: no folder '$sub' in $repo at ${ref:-its default branch}"; return 0; }
-  elif [ -d "$base" ]; then
-    GOT=$base${sub:+/$sub}; [ -d "$GOT" ] || die "$where: no folder '$sub' in $repo at $ref"; return 0
+    if grep -qxF "$base" "$FETCHED"; then GOT=$base${sub:+/$sub}; [ -d "$GOT" ] || die "$where: no folder '$sub' in $repo at ${ref:-its default branch}"; return 0; fi
   else
+    base=$CACHE/git/$base
+    if [ -d "$base" ]; then GOT=$base${sub:+/$sub}; [ -d "$GOT" ] || die "$where: no folder '$sub' in $repo at $ref"; return 0; fi
     case $ref in *[!0-9a-f]*) sha= ;; *) sha=$( [ ${#ref} = 40 ] && echo 1 || true ) ;; esac
     if [ -z "$sha" ] && ! git ls-remote --exit-code "$repo" "refs/tags/$ref" >/dev/null 2>&1 < /dev/null; then
       ! git ls-remote --exit-code "$repo" "refs/heads/$ref" >/dev/null 2>&1 < /dev/null \
@@ -115,18 +119,19 @@ fetch_git() {   # fetch_git <url> <follow 0|1> <where>: sets GOT to the source's
       die "$where: found no tag '$ref' in $repo (or couldn't reach it). A commit needs all 40 characters; a ref containing '/' isn't supported"
     fi
   fi
-  tmp=$(mktemp -d)
+  tmp=$(mktemp -d "$W/fetch.XXXXXX")
   git -C "$tmp" init -q
   git -C "$tmp" fetch -q --depth 1 "$repo" "${ref:-HEAD}" < /dev/null || { rm -rf "$tmp"; die "$where: can't fetch '${ref:-HEAD}' from $repo"; }
-  git -C "$tmp" checkout -q FETCH_HEAD && rm -rf "$tmp/.git"
-  rm -rf "$base" && mkdir -p "$(dirname "$base")" && mv "$tmp" "$base"
+  # symlinks become plain files holding their path, so a source can't link sync to your own files
+  git -C "$tmp" -c core.symlinks=false checkout -q FETCH_HEAD || { rm -rf "$tmp"; die "$where: can't check out '${ref:-HEAD}' from $repo"; }
+  rm -rf "$tmp/.git" "$base" && mkdir -p "$(dirname "$base")" && mv "$tmp" "$base"
   echo "$base" >> "$FETCHED"
   GOT=$base${sub:+/$sub}
   [ -d "$GOT" ] || die "$where: no folder '$sub' in $repo at ${ref:-its default branch}; a ref containing '/' isn't supported, use a tag or commit"
 }
 
-read_source() {   # read_source <folder> <label> <followed 0|1> [skill]
-  local dir=$1 label=$2 followed=$3 only=${4:-} file where body line verb kind what n p found mine
+read_source() {   # read_source <folder> <label> <followed 0|1> [skill|person]
+  local dir=$1 label=$2 followed=$3 only=${4:-} file where body line verb kind what n p found root
   has "$SRC" 1 "$dir" && return 0   # each source is read once
   echo "$dir$TAB$label$TAB$followed" >> "$SRC"
   if [ "$only" = skill ]; then echo "$(basename "$dir")$TAB$dir$TAB$label" >> "$SKL"; return 0; fi
@@ -134,11 +139,12 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill]
     echo "$(basename "$(dirname "$p")")$TAB$(dirname "$p")$TAB$label"
   done >> "$SKL"
   for p in "$dir"/rules/*.md; do if [ -f "$p" ]; then echo "$p$TAB$label" >> "$RUL"; fi; done
+  [ "$only" != person ] || return 0   # a colleague's init scripts and agentfiles.txt stay theirs
   for p in "$dir"/init/*.sh; do if [ -f "$p" ]; then echo "$(basename "$p")$TAB$p$TAB$label$TAB$followed" >> "$INI"; fi; done
   file=$dir/agentfiles.txt
   [ -f "$file" ] || return 0
-  where=$(rel "$file") body=$(lines "$file") mine=0
-  [ "$file" != "$MINE/agentfiles.txt" ] || mine=1
+  where=$(rel "$file") body=$(lines "$file") root=0
+  [ "$file" != "$MINE/agentfiles.txt" ] && [ "$file" != "$TEAM/shared/agentfiles.txt" ] || root=1
   n=$(echo "$body" | awk '$1 == "format"' | wc -l | tr -d ' ')
   [ "$n" -le 1 ] || die "$where: expected one 'format' line; found $n"
   p=$(echo "$body" | awk '$1 == "format" {print $2}')
@@ -156,7 +162,7 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill]
     case $verb/$kind in
       use/preset)
         echo "$what" >> "$USED"
-        ! grep -qxF "$what" "$OFFP" || continue
+        ! echo "$OFF_PRESETS" | grep -qxF "$what" || continue
         if [ -d "$STARTER/presets/$what" ] && [ -d "$TEAM/presets/$what" ]; then
           die "$where: two presets named $what, the starter's and the team repo's presets/$what; rename the team's"
         elif [ -d "$STARTER/presets/$what" ]; then read_source "$STARTER/presets/$what" "preset $what" "$followed"
@@ -164,7 +170,7 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill]
         else die "$where: found no preset '$what' in the starter's or the team repo's presets/"; fi ;;
       use/person)
         [ -d "$TEAM/people/$what" ] || die "$where: 'use person $what' expects people/$what/ in the team repo; it's missing"
-        read_source "$TEAM/people/$what" "people/$what" "$followed" ;;
+        read_source "$TEAM/people/$what" "people/$what" "$followed" person ;;
       use/skill)
         found=$(find "$TEAM/people" -path "*/skills/*" -path "*/$what/SKILL.md" -not -path '*/.git/*')
         [ "$(echo "$found" | grep -c .)" = 1 ] || die "$where: 'use skill $what' expects one skill named $what in people/*/skills/; found $(echo "$found" | grep -c . || true)"
@@ -177,32 +183,29 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill]
       follow/git) fetch_git "$what" 1 "$where"; read_source "$GOT" "$what" 1 ;;
       use/*) die "$where: 'use' takes preset, person, skill, folder or git; got '$kind'" ;;
       follow/*) die "$where: 'follow' takes only git; got '$kind'" ;;
-      off/skill|off/rule|off/init|off/preset) echo "$kind$TAB$what$TAB$mine$TAB$where" >> "$OFFS" ;;
+      off/preset) [ "$root" = 1 ] || die "$where: 'off preset' works only in shared/ and people/<me>/; got it here" ;;
+      off/skill|off/rule|off/init) echo "$kind$TAB$what$TAB$root$TAB$where" >> "$OFFS" ;;
       off/*) die "$where: 'off' takes skill, rule, init or preset; got '$kind'" ;;
     esac
   done <<< "$body"
 }
 
-# Read everything from shared/ and my folder. An 'off preset' can sit in any file, so read again,
-# skipping every preset turned off so far, until no new one turns up.
-while :; do
-  for f in "$SRC" "$SKL" "$RUL" "$INI" "$OFFS" "$KEEPS" "$USED" "$FOLLOWED"; do : > "$f"; done
-  read_source "$TEAM/shared" shared 0
-  read_source "$MINE" "people/$ME" 0
-  awk -F"$TAB" '$1 == "preset" {print $2}' "$OFFS" | grep -vxF -f "$OFFP" > "$NEWP" || true
-  [ -s "$NEWP" ] || break
-  cat "$NEWP" >> "$OFFP"
-done
+# Presets turned off, which only shared/ and my own file can do; then everything both use.
+OFF_PRESETS=$( { lines "$TEAM/shared/agentfiles.txt"; lines "$MINE/agentfiles.txt"; } | awk '$1 == "off" && $2 == "preset" {print $3}' | sort -u)
+read_source "$TEAM/shared" shared 0
+read_source "$MINE" "people/$ME" 0
 read_source "$STARTER/bin/skills/agentfiles" core 0 skill   # the core, which nobody turns off
 
 # --- Off: check my own lines, then drop what's off -----------------------------
 offs() { awk -F"$TAB" -v k="$1" '$1 == k {print $2}' "$OFFS" | sort -u; }
-RULENAMES=$(mktemp)   # rule name, file, label
+RULENAMES=$W/rule-names   # rule name, file, label
 while IFS="$TAB" read -r f label; do
   sed -n 's/^- \*\*\([^*]*\)\*\*:.*/\1/p' "$f" | while IFS= read -r n; do echo "$n$TAB$f$TAB$label"; done
 done < "$RUL" > "$RULENAMES"
-while IFS="$TAB" read -r kind name mine where; do
-  [ "$mine" = 1 ] || continue   # a team or preset line that matches nothing is theirs to tidy
+mine_offs=$(awk '$1 == "off" {print $2 "\t" $3}' <(lines "$MINE/agentfiles.txt"))
+while IFS="$TAB" read -r kind name; do   # a team or preset line that matches nothing is theirs to tidy
+  [ -n "$kind" ] || continue
+  where="people/$ME/agentfiles.txt"
   case $kind in
     skill) [ "$name" != agentfiles ] || die "$where: 'off skill agentfiles': the core can't be turned off"
            has "$SKL" 1 "$name" || die "$where: 'off skill $name' matches no skill you'd get" ;;
@@ -210,10 +213,10 @@ while IFS="$TAB" read -r kind name mine where; do
     init) has "$INI" 1 "$name" || die "$where: 'off init $name' matches no init script you'd get" ;;
     preset) grep -qxF "$name" "$USED" || die "$where: 'off preset $name' matches no preset you'd get" ;;
   esac
-done < "$OFFS"
+done <<< "$mine_offs"
 OFF_SKILLS=$(offs skill) OFF_RULES=$(offs rule) OFF_INITS=$(offs init)
 
-SKILLS=$(mktemp)   # name, folder
+SKILLS=$W/skills   # name, folder
 OFF=$OFF_SKILLS awk -F"$TAB" '   # through the environment: BSD awk rejects a -v value with a newline
   BEGIN { n = split(ENVIRON["OFF"], o, "\n"); for (i = 1; i <= n; i++) skip[o[i]] = 1 }
   skip[$1] && $3 != "core" { next }
@@ -221,21 +224,24 @@ OFF=$OFF_SKILLS awk -F"$TAB" '   # through the environment: BSD awk rejects a -v
   !($1 in dir) { dir[$1] = $2; from[$1] = $3; print $1 "\t" $2 }
   END { exit bad }' "$SKL" > "$SKILLS" || exit 1
 
-awk -F"$TAB" '($1 in from) && from[$1] != $2 { print "sync: two rules named " $1 ": in " $2 " and " from[$1] > "/dev/stderr"; bad = 1 }
+OFF=$OFF_RULES awk -F"$TAB" '
+  BEGIN { n = split(ENVIRON["OFF"], o, "\n"); for (i = 1; i <= n; i++) skip[o[i]] = 1 }
+  skip[$1] { next }
+  ($1 in from) && from[$1] != $2 { print "sync: two rules named " $1 ": in " $2 " and " from[$1] > "/dev/stderr"; bad = 1 }
   { from[$1] = $2 } END { exit bad }' "$RULENAMES" || exit 1
-RULES=$(mktemp)   # link name, file: the rule file itself, or a copy without the rules turned off
-rm -rf "$CACHE/rules" && mkdir -p "$CACHE/rules"
+RULES=$W/rules   # link name, what the link points to, the text: the rule file, or a copy without the rules turned off
+mkdir -p "$W/rule-copies"
 while IFS="$TAB" read -r f label; do
   link=agentfiles-$(echo "$label" | sed -e 's|^[a-z+]*://||' -e 's|[^A-Za-z0-9._]\{1,\}|-|g' -e 's|^-||' -e 's|-$||')-$(basename "$f")
   drop=$(sed -n 's/^- \*\*\([^*]*\)\*\*:.*/\1/p' "$f" | grep -xF -f <(echo "$OFF_RULES"; echo) || true)
-  if [ -z "$drop" ]; then echo "$link$TAB$f"; continue; fi
-  echo "$drop" | awk '{print "- **" $0 "**:"}' > "$CACHE/rules/.drop"
-  awk 'NR == FNR {d[$0] = 1; next} { for (p in d) if (index($0, p) == 1) next; print }' "$CACHE/rules/.drop" "$f" > "$CACHE/rules/$link"
-  rm "$CACHE/rules/.drop"
-  echo "$link$TAB$CACHE/rules/$link"
+  if [ -z "$drop" ]; then echo "$link$TAB$f$TAB$f"; continue; fi
+  echo "$drop" | awk '{print "- **" $0 "**:"}' > "$W/drop"
+  awk 'NR == FNR {d[$0] = 1; next} { for (p in d) if (index($0, p) == 1) next; print }' "$W/drop" "$f" > "$W/rule-copies/$link"
+  echo "$link$TAB$CACHE/rules/$link$TAB$W/rule-copies/$link"
 done < "$RUL" > "$RULES"
+awk -F"$TAB" '($1 in seen) { print "sync: two rule files would both be linked as " $1 "; rename one" > "/dev/stderr"; bad = 1 } { seen[$1] = 1 } END { exit bad }' "$RULES" || exit 1
 
-INITS=$(mktemp)   # file name, script
+INITS=$W/inits   # file name, script
 OFF=$OFF_INITS awk -F"$TAB" '
   BEGIN { n = split(ENVIRON["OFF"], o, "\n"); for (i = 1; i <= n; i++) skip[o[i]] = 1 }
   skip[$1] { next }
@@ -250,14 +256,14 @@ mkdir -p "$CACHE/written"
 touch "$CACHE/links"
 ours() {   # a link that still points where sync put it, or a file sync wrote that nobody changed since
   if [ -L "$1" ]; then
-    grep -qxF "$1$TAB$(readlink "$1")" "$CACHE/links" || case $(readlink "$1") in "$STARTER"/*|"$TEAM"/*|"$CACHE"/*) true ;; *) false ;; esac
+    grep -qxF "$1$TAB$(readlink "$1")" "$CACHE/links" || case $(readlink "$1") in "$STARTER"/*) true ;; *) false ;; esac
   else
     [ -e "$CACHE/written/${1#$HOME/}" ] && diff -rq -x .DS_Store "$1" "$CACHE/written/${1#$HOME/}" >/dev/null 2>&1
   fi
 }
 kept() { echo "$KEEP" | grep -qxF "$(basename "$1")"; }
 
-FOREIGN=$(mktemp)
+FOREIGN=$W/foreign
 for d in $OWNED_DIRS; do
   [ ! -L "$d" ] || die "expected a folder at $d; found a link to $(readlink "$d"). Move it, then run sync again"
   for p in "$d"/*; do
@@ -269,7 +275,7 @@ for f in $OWNED_FILES; do
   if [ -e "$f" ] || [ -L "$f" ]; then ours "$f" || echo "$f"; fi
 done >> "$FOREIGN"
 
-UNMANAGED=$(mktemp)   # kind, file, name
+UNMANAGED=$W/unmanaged   # kind, file, name
 {
   oc=$HOME/.config/opencode
   for d in "$HOME/.claude/agents" "$HOME/.codex/agents" "$HOME/.cursor/agents" "$oc/agent" "$oc/agents"; do
@@ -308,7 +314,6 @@ if [ -s "$UNMANAGED" ]; then
               printf " %s%s", nm[j], (j < k ? "," : ""); w += length(nm[j]) + 2 }
             print "" } }'
 fi
-TMPS="$SRC $SKL $RUL $INI $OFFS $KEEPS $USED $FOLLOWED $FETCHED $OFFP $NEWP $RULENAMES $SKILLS $RULES $INITS $FOREIGN $UNMANAGED"
 
 # --- Something in the way: show the plan, change nothing -------------------
 if [ -s "$FOREIGN" ] && [ -z "$CLEAN" ]; then
@@ -338,22 +343,21 @@ if [ -s "$FOREIGN" ] && [ -z "$CLEAN" ]; then
   echo "  - adjust people/$ME/agentfiles.txt (use, off, keep) and run ${B}bin/sync${N} again, or"
   echo "  - run ${B}bin/sync --clean${N}: it moves what's in the way to ~/.cache/agentfiles/removed-<date>/ and sets up."
   echo "  ${D}Text you added to a file sync writes, such as ~/.codex/AGENTS.md, belongs in people/$ME/rules/.${N}"
-  rm -rf $TMPS
   exit 1
 fi
 
 # --- What sync puts in place: links, and files it writes ----------------------
-LINKS=$(mktemp)   # path, target
+LINKS=$W/links   # path, target
 for d in $SKILL_DIRS; do awk -F"$TAB" -v d="$d" '{print d "/" $1 "\t" $2}' "$SKILLS"; done >> "$LINKS"
 awk -F"$TAB" -v d="$RULE_DIR" '{print d "/" $1 "\t" $2}' "$RULES" >> "$LINKS"
 
 kept_planned=$( { cut -f1 "$LINKS"; for w in $WRITTEN; do echo "$HOME/$w"; done; } | while IFS= read -r p; do kept "$p" && echo "$p"; done || true)
 [ -z "$kept_planned" ] || die "a keep line names something sync puts in place: $(echo "$kept_planned" | tilde | paste -sd ' ' -); drop that keep line"
 
-STAGE=$(mktemp -d)   # the written files, at their paths under ~
+STAGE=$W/stage   # the written files, at their paths under ~
 TEXT=$STAGE/.codex/AGENTS.md
 mkdir -p "$STAGE/.codex" "$STAGE/.config/opencode" "$STAGE/$PLUGIN/.cursor-plugin" "$STAGE/$PLUGIN/rules" "$(dirname "$STAGE/$GUARD")"
-cut -f2 "$RULES" | while IFS= read -r f; do cat "$f"; echo; done > "$TEXT"
+cut -f3 "$RULES" | while IFS= read -r f; do cat "$f"; echo; done > "$TEXT"
 cp "$TEXT" "$STAGE/.config/opencode/AGENTS.md"
 printf '{"name":"agentfiles-rules","version":"1.0.0","description":"Rules from %s, written by bin/sync"}\n' "$TEAM" > "$STAGE/$PLUGIN/.cursor-plugin/plugin.json"
 { printf -- '---\nalwaysApply: true\n---\n\n- **agentfiles**: These are the agentfiles rules for %s.\n\n' "$ME"; cat "$TEXT"; } > "$STAGE/$PLUGIN/rules/agentfiles.mdc"
@@ -374,12 +378,13 @@ mkdir -p $SKILL_DIRS "$RULE_DIR"
 while IFS="$TAB" read -r p target; do   # remove my links that are no longer wanted
   cut -f1 "$LINKS" | grep -qxF "$p" || { [ -L "$p" ] && [ "$(readlink "$p")" = "$target" ] && rm "$p"; } || true
 done < "$CACHE/links"
-for d in $OWNED_DIRS; do   # links into the starter, the team repo or the cache that sync no longer plans
+for d in $OWNED_DIRS; do   # links into the starter that sync no longer plans, from before it kept a list
   for p in "$d"/*; do
     [ -L "$p" ] && ! kept "$p" || continue
-    case $(readlink "$p") in "$STARTER"/*|"$TEAM"/*|"$CACHE"/*) cut -f1 "$LINKS" | grep -qxF "$p" || rm "$p" ;; esac
+    case $(readlink "$p") in "$STARTER"/*) cut -f1 "$LINKS" | grep -qxF "$p" || rm "$p" ;; esac
   done
 done
+rm -rf "$CACHE/rules" && cp -R "$W/rule-copies" "$CACHE/rules"
 while IFS="$TAB" read -r p target; do ln -sfn "$target" "$p"; done < "$LINKS"
 cp "$LINKS" "$CACHE/links"
 for w in $WRITTEN; do
@@ -396,8 +401,7 @@ while IFS="$TAB" read -r -u 3 name f; do   # fd 3, so a script that asks somethi
 done 3< "$INITS"
 
 # --- Report ---------------------------------------------------------------
-offs=$( { echo "$OFF_SKILLS" | sed 's/$/ (skill)/'; echo "$OFF_RULES" | sed 's/$/ (rule)/'; offs preset | sed 's/$/ (preset)/'; } | grep -v '^ (' | paste -sd ',' - | sed 's/,/, /g' || true)
+offs=$( { echo "$OFF_SKILLS" | sed 's/$/ (skill)/'; echo "$OFF_RULES" | sed 's/$/ (rule)/'; echo "$OFF_PRESETS" | sed 's/$/ (preset)/'; } | grep -v '^ (' | paste -sd ',' - | sed 's/,/, /g' || true)
 section "Synced" "$B$G"
 echo "  $(wc -l < "$SKILLS" | tr -d ' ') skills and $(wc -l < "$RULES" | tr -d ' ') rule files for $ME from $(echo "$TEAM" | tilde)${offs:+ ${D}(off: $offs)${N}}. New ones load in a new chat."
 sort -u "$FOLLOWED" | while IFS= read -r u; do echo "  ${Y}following${N} $u"; done
-rm -rf $TMPS "$LINKS" "$STAGE"

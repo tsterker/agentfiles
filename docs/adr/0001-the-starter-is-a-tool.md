@@ -10,4 +10,4 @@ Teams clone the starter and pull it; they never edit it. Their skills and rules 
 ## Consequences
 
 - A team repo declares the format of its `agentfiles.txt` (`format v1`), not the starter's version. Releases that keep the format never ask a team to edit anything; the tool reads only the current format and stops on any other, pointing to `CHANGELOG.md`.
-- The starter's presets reach each person when they pull the starter, not when their team decides. A team that wants to decide pins a preset with `use git` and a tag of the starter.
+- The starter's presets reach each person when they pull the starter, not when their team decides. A team that wants to decide pins the starter's presets with `use git` links to a tag of the starter; `recommended` names its parts with `use preset`, which reads the local starter, so such a team pins `pocock` and `habits` instead.
