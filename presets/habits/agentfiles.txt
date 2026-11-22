@@ -1,0 +1,6 @@
+# Working habits: the rules in rules/, plus pstack's principles (MIT): check the real thing before
+# calling it done; remove before adding.
+format v1
+
+use git https://github.com/michael-denyer/pstack-claude/tree/v0.9.112/plugins/pstack/skills/principle-prove-it-works
+use git https://github.com/michael-denyer/pstack-claude/tree/v0.9.112/plugins/pstack/skills/principle-subtract-before-you-add

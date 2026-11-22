@@ -1,0 +1,20 @@
+# Matt Pocock's skills (MIT): grilling and its family, writing for agents, and the engineering loop,
+# debugging, handoffs and retros, with every skill these call. rules/ points skills that need an issue
+# tracker at local markdown.
+format v1
+
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grilling
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grill-me
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/grill-with-docs
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/domain-modeling
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/writing-for-agents
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/tdd
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/codebase-design
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/code-review
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/wayfinder
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/research
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/prototype
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/setup-matt-pocock-skills
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/diagnosing-bugs
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/handoff
+use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/retro

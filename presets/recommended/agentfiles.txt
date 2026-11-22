@@ -1,0 +1,5 @@
+# A first good starting point for working with agents: the presets below, as they are.
+format v1
+
+use preset pocock
+use preset habits
