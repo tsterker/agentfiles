@@ -1,0 +1,17 @@
+# What you get besides shared/, one line each: <verb> <kind> <what>. Line order doesn't matter,
+# and off always wins.
+format v1
+
+# use preset pocock                     a preset from the starter's or the team repo's presets/
+# use person ana                        a colleague's whole folder: skills and rules
+# use skill  ana-review                 one skill from a colleague's folder
+# use folder ~/projects/my-skills       a folder on your disk, linked live, never committed
+# use git    https://github.com/<owner>/<repo>/tree/<tag or commit>/<path>
+#                                       a git repo or part of it, fetched once into ~/.cache/agentfiles
+# follow git https://github.com/<owner>/<repo>/tree/<branch>/<path>
+#                                       a branch, fetched on every sync: whoever pushes to it shapes your agent
+# off skill  grilling                   a skill, rule, init script or preset you'd otherwise get
+# off rule   needs-you
+# off init   tldraw.sh
+# off preset habits
+# keep my-app                           a name another tool installs in the folders sync owns

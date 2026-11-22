@@ -1,0 +1,5 @@
+# What everyone on the team gets, one line each: <verb> <kind> <what>. Line order doesn't matter,
+# and off always wins. The forms are in people/<you>/agentfiles.txt and the starter's README.
+format v1
+
+use preset recommended   # the starter's first good starting point: off what you don't want, or list its parts

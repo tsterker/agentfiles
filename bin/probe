@@ -9,9 +9,10 @@ else B= D= R= G= Y= C= N=; fi
 die() { echo "${R}probe: $*${N}" >&2; exit 1; }
 section() { printf '\n%s── %s %s%s\n' "${2:-$B$C}" "$1" "$(printf '%*s' $((60 - ${#1})) '' | sed 's/ /─/g')" "$N"; }
 
-REPO=$(cd "$(dirname "$0")/.." && pwd -P)
-[ -f "$REPO/.me" ] || die "who are you? Run bin/sync --me <name> once"
-ME=$(cat "$REPO/.me")
+STARTER=$(cd "$(dirname "$0")/.." && pwd -P)
+saved() { [ ! -f "$STARTER/.local" ] || awk -v k="$1" '$1 == k { sub(/^[^ ]+ /, ""); print }' "$STARTER/.local"; }
+ME=$(saved me) REPO=$(saved repo)
+[ -n "$ME" ] && [ -n "$REPO" ] || die "which team repo, and who are you? Run bin/sync --repo <path> --me <name> once"
 T3HOME=${T3CODE_HOME:-$HOME/.t3}
 
 section "What this checks"
@@ -25,7 +26,7 @@ echo "     whatever happens."
 echo "  ${D}It proves delivery, not obedience: a loaded rule can still lose to a stronger instruction.${N}"
 echo "  ${D}Each question is one short prompt on that harness's default model; they run in parallel.${N}"
 
-out=$("$REPO/bin/sync" 2>&1) || { echo "$out" | tail -n 12; die "bin/sync hasn't set up this machine (above). Run it, and --clean if you mean to, then probe again"; }
+out=$("$STARTER/bin/sync" 2>&1) || { echo "$out" | tail -n 12; die "bin/sync hasn't set up this machine (above). Run it, and --clean if you mean to, then probe again"; }
 
 RW=rprobe-$RANDOM$RANDOM SW=sprobe-$RANDOM$RANDOM
 RULE=$REPO/people/$ME/rules/zz-probe-$RW.md   # unique names: the probe removes only what it made
@@ -36,13 +37,13 @@ cleanup() {
   [ -z "$PROJECT" ] || t3 project remove --force "$PROJECT" >/dev/null 2>&1 || true
   [ -z "$MADE" ] || rm -rf "$RULE" "$SKILL"
   rm -rf "$WORK" "$OUT"
-  "$REPO/bin/sync" >/dev/null 2>&1 || echo "${R}probe: the closing bin/sync failed; run it yourself to see why${N}" >&2
+  "$STARTER/bin/sync" >/dev/null 2>&1 || echo "${R}probe: the closing bin/sync failed; run it yourself to see why${N}" >&2
 }
 trap cleanup EXIT
 mkdir -p "$(dirname "$RULE")" "$(dirname "$SKILL")" && mkdir "$SKILL" && MADE=1
 printf -- '- **probe**: When asked for the rule probe word: answer %s.\n' "$RW" > "$RULE"
 printf -- '---\nname: %s\ndescription: Temporary canary written by bin/probe. Its skill probe word is %s.\n---\n\nAnswer with the skill probe word from the description.\n' "$(basename "$SKILL")" "$SW" > "$SKILL/SKILL.md"
-"$REPO/bin/sync" >/dev/null 2>&1 || die "bin/sync failed with the probe's rule and skill in place"
+"$STARTER/bin/sync" >/dev/null 2>&1 || die "bin/sync failed with the probe's rule and skill in place"
 
 Q="Answer only from what is already in your context; run no tools and read no files. Your rules may define a rule probe word, and a skill in your list of available skills may name a skill probe word in its description. Reply with exactly two lines, \`rule: <word>\` and \`skill: <word>\`, writing UNKNOWN for a word you have not been given."
 WORK=$(mktemp -d "$HOME/.probe-XXXXXX"); cd "$WORK"   # under ~, so harnesses that walk up the folders still find ~

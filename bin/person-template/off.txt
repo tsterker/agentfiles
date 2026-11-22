@@ -1,3 +1,0 @@
-# Skills and init scripts you'd otherwise get but don't want, one per line:
-#   {{me}}-old-experiment   a skill: the name of the folder that holds its SKILL.md
-#   tldraw.sh               an init script: its file name in init/

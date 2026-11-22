@@ -1,4 +1,0 @@
-# Skills from outside your folder, one per line:
-#   ana/review              a colleague's skill
-#   ana/*                   all of a colleague's skills
-#   ~/projects/my-skills    every skill in a folder on your disk, linked live, never committed

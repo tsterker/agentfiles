@@ -1,3 +1,0 @@
-# Names sync leaves alone in every folder it owns, because another tool installs them there.
-# One per line, with a comment saying who installs it:
-#   my-app   # My App installs its skill
