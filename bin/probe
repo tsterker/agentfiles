@@ -12,7 +12,8 @@ section() { printf '\n%s── %s %s%s\n' "${2:-$B$C}" "$1" "$(printf '%*s' $((6
 AGENTFILES=$(cd "$(dirname "$0")/.." && pwd -P)
 saved() { [ ! -f "$AGENTFILES/.local" ] || awk -v k="$1" '$1 == k { sub(/^[^ ]+ /, ""); print }' "$AGENTFILES/.local"; }
 ME=$(saved me) REPO=$(saved repo)
-[ -n "$ME" ] && [ -n "$REPO" ] || die "which team repo, and who are you? Run bin/sync --repo <path> --me <name> once"
+[ -n "$REPO" ] || die "which team repo? Run bin/sync --repo <path> --me <name> once"
+[ -n "$ME" ] || die "probe writes a throwaway rule and skill into your folder; you have none. Run bin/sync --me <name> once"
 T3HOME=${T3CODE_HOME:-$HOME/.t3}
 
 section "What this checks"

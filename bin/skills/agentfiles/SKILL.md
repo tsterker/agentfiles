@@ -5,11 +5,11 @@ description: Agentfiles, the user's skills and rules: a team repo that the agent
 
 # Agentfiles
 
-First, **find the two repos and me.** The agentfiles repo is `git -C "$(cd <this skill's folder> && pwd -P)" rev-parse --show-toplevel`; its `.local` names `me` and the team `repo`. Its `README.md` has the layout, the `agentfiles.txt` forms and the principles. You change only the team repo; agentfiles changes by pull. Use each repo's version control throughout: `jj` when it has `.jj/`, else `git`.
+First, **find the two repos and me.** The agentfiles repo is `git -C "$(cd <this skill's folder> && pwd -P)" rev-parse --show-toplevel`; its `.local` names the team `repo` and, when the user has a folder there, `me`. Its `README.md` has the layout, the `agentfiles.txt` forms and the principles. You change only the team repo; agentfiles changes by pull. Use each repo's version control throughout: `jj` when it has `.jj/`, else `git`.
 
 ## Change something
 
-1. **Pick the place.** Work in `people/<me>/` of the team repo. Use `shared/` only when the user says it's for everyone or the team.
+1. **Pick the place.** Work in `people/<me>/` of the team repo. Use `shared/` only when the user says it's for everyone or the team. With no `me`, offer `bin/sync --me <name>` for a folder of their own, or `shared/`.
 2. **Pick the kind.**
    - **Rule**: guidance that must hold in every chat, in one line: `- **<name>**: When <situation>: <do>.` Add it to the fitting `rules/<topic>.md`, or a new topic file. Rules cost attention in every chat, so prefer a skill when the guidance matters only for some tasks.
    - **Skill**: a procedure or knowledge needed for some tasks: `skills/<name>/SKILL.md`, its frontmatter `name` equal to the folder name and a `description` saying what it is and when to use it. The name must be unique across everything the user gets; `<me>-<name>` is a safe default.

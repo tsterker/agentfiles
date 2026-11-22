@@ -8,6 +8,8 @@ The tool is called agentfiles; "starter" is gone from its docs and output. A tea
 
 - Init scripts get the agentfiles repo's path as `$AGENTFILES`, no longer `$STARTER`.
 - Sync's summary marks files from the agentfiles repo with `agentfiles:`, no longer `starter:`.
+- `--me` is optional: without it, sync gets `shared/` only and creates no person folder.
+- `--repo` adds a `README.md` to a team repo that has none, saying what it is and how to set it up.
 
 ## 0.1.0 (format v1)
 

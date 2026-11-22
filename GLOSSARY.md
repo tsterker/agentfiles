@@ -79,5 +79,5 @@ The version of the `agentfiles.txt` language a file is written in; agentfiles re
 _Avoid_: schema, version, edition
 
 **Sync**:
-Making a machine's harnesses match the team repo for one person: the core, shared, their own folder and every source these use, minus what is off. It owns the folders and files those harnesses read skills and rules from, all or nothing, from the first sync that sets up: right away on a machine with nothing in the way, otherwise after `--clean`.
+Making a machine's harnesses match the team repo for one person, or for no one in particular: the core, shared, their own folder if they have one, and every source these use, minus what is off. It owns the folders and files those harnesses read skills and rules from, all or nothing, from the first sync that sets up: right away on a machine with nothing in the way, otherwise after `--clean`.
 _Avoid_: install, deploy, update

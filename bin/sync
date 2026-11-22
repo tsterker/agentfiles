@@ -50,14 +50,13 @@ if [ -n "$REPO" ]; then
 else
   TEAM=$(saved repo)
 fi
-[ -n "$TEAM" ] || die "which team repo? Run bin/sync --repo <path> --me <name> once"
-[ -n "$ME" ] || die "who are you? Run bin/sync --me <name> once"
-case $ME in [a-z0-9]*) ;; *) die "--me takes a name starting with a-z or 0-9; got '$ME'" ;; esac
+[ -n "$TEAM" ] || die "which team repo? Run bin/sync --repo <path> [--me <name>] once"
+case $ME in '') ;; [a-z0-9]*) ;; *) die "--me takes a name starting with a-z or 0-9; got '$ME'" ;; esac
 case $ME in *[!a-z0-9._-]*) die "--me takes a name of a-z, 0-9, '.', '_' and '-'; got '$ME'" ;; esac
 case $TEAM in *[[:space:]]*) die "expected a team repo path without spaces; got '$TEAM'" ;; esac
 [ "$TEAM" != "$AGENTFILES" ] || die "expected a team repo of its own; got the agentfiles repo itself. Clone your team's project elsewhere"
 [ -e "$TEAM/.git" ] || [ -d "$TEAM/.jj" ] || die "expected a git repo at $TEAM; found a plain folder. Clone your team's project there first"
-printf 'me %s\nrepo %s\n' "$ME" "$TEAM" > "$LOCAL"
+{ [ -z "$ME" ] || echo "me $ME"; echo "repo $TEAM"; } > "$LOCAL"
 
 welcome=
 if [ ! -f "$TEAM/shared/agentfiles.txt" ]; then
@@ -65,8 +64,17 @@ if [ ! -f "$TEAM/shared/agentfiles.txt" ]; then
   mkdir -p "$TEAM/shared" && cp "$AGENTFILES/bin/templates/shared/agentfiles.txt" "$TEAM/shared/"
   welcome="Created shared/agentfiles.txt in $TEAM: what everyone on the team gets."
 fi
-MINE=$TEAM/people/$ME
-if [ ! -d "$MINE" ]; then
+if [ -n "$REPO" ] && [ ! -e "$TEAM/README.md" ]; then   # what the repo is, for whoever opens it
+  url=$(git -C "$AGENTFILES" remote get-url origin 2>/dev/null | sed -e 's|^git@\([^:]*\):|https://\1/|' -e 's|\.git$||' || true)
+  origin=$(git -C "$TEAM" remote get-url origin 2>/dev/null || echo "<this repo's clone URL>")
+  sed -e "s|{{folder}}|$(basename "$TEAM")|g" -e "s|{{agentfiles}}|${url:-https://github.com/tsterker/agentfiles-starter}|g" -e "s|{{origin}}|$origin|g" \
+    "$AGENTFILES/bin/templates/README.md" > "$TEAM/README.md"
+  welcome="${welcome:+$welcome
+  }Created README.md in $TEAM: what this repo is and how to set it up."
+fi
+MINE= OWN=shared/agentfiles.txt   # without a me, sync gets shared/ only
+[ -z "$ME" ] || MINE=$TEAM/people/$ME OWN=people/$ME/agentfiles.txt
+if [ -n "$ME" ] && [ ! -d "$MINE" ]; then
   [ -n "$ASKED" ] || die "expected your folder people/$ME/ in $TEAM; it's missing. Run bin/sync --me $ME to create it"
   mkdir -p "$TEAM/people" && cp -R "$AGENTFILES/bin/templates/person" "$MINE"
   find "$MINE" -type f -exec sed -i '' "s/{{me}}/$ME/g" {} +
@@ -78,7 +86,7 @@ if [ -n "$welcome" ]; then
   echo "  $welcome"
   echo "  Commit and push the team repo. When your agent does something you don't like, ask it why, then ask it to change that."
 fi
-[ -f "$MINE/agentfiles.txt" ] || die "expected people/$ME/agentfiles.txt in $TEAM; it's missing"
+[ -z "$ME" ] || [ -f "$MINE/agentfiles.txt" ] || die "expected people/$ME/agentfiles.txt in $TEAM; it's missing"
 
 # Lines of a file, without comments, trailing comments and blank lines.
 lines() { [ -f "$1" ] || return 0; sed -e 's/[[:space:]]*#.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$1" | grep -v -e '^$' || true; }
@@ -191,9 +199,9 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill|person]
 }
 
 # Presets turned off, which only shared/ and my own file can do; then everything both use.
-OFF_PRESETS=$( { lines "$TEAM/shared/agentfiles.txt"; lines "$MINE/agentfiles.txt"; } | awk '$1 == "off" && $2 == "preset" {print $3}' | sort -u)
+OFF_PRESETS=$( { lines "$TEAM/shared/agentfiles.txt"; [ -z "$ME" ] || lines "$MINE/agentfiles.txt"; } | awk '$1 == "off" && $2 == "preset" {print $3}' | sort -u)
 read_source "$TEAM/shared" shared 0
-read_source "$MINE" "people/$ME" 0
+[ -z "$ME" ] || read_source "$MINE" "people/$ME" 0
 read_source "$AGENTFILES/bin/skills/agentfiles" core 0 skill   # the core, which nobody turns off
 
 # --- Off: check my own lines, then drop what's off -----------------------------
@@ -202,7 +210,7 @@ RULENAMES=$W/rule-names   # rule name, file, label
 while IFS="$TAB" read -r f label; do
   sed -n 's/^- \*\*\([^*]*\)\*\*:.*/\1/p' "$f" | while IFS= read -r n; do echo "$n$TAB$f$TAB$label"; done
 done < "$RUL" > "$RULENAMES"
-mine_offs=$(awk '$1 == "off" {print $2 "\t" $3}' <(lines "$MINE/agentfiles.txt"))
+mine_offs=$( [ -z "$ME" ] || awk '$1 == "off" {print $2 "\t" $3}' <(lines "$MINE/agentfiles.txt"))
 while IFS="$TAB" read -r kind name; do   # a team or preset line that matches nothing is theirs to tidy
   [ -n "$kind" ] || continue
   where="people/$ME/agentfiles.txt"
@@ -340,9 +348,9 @@ if [ -s "$FOREIGN" ] && [ -z "$CLEAN" ]; then
 
   section "Changed nothing" "$B$G"
   echo "  Nothing in your harnesses changed. Next:"
-  echo "  - adjust people/$ME/agentfiles.txt (use, off, keep) and run ${B}bin/sync${N} again, or"
+  echo "  - adjust $OWN (use, off, keep) and run ${B}bin/sync${N} again, or"
   echo "  - run ${B}bin/sync --clean${N}: it moves what's in the way to ~/.cache/agentfiles/removed-<date>/ and sets up."
-  echo "  ${D}Text you added to a file sync writes, such as ~/.codex/AGENTS.md, belongs in people/$ME/rules/.${N}"
+  echo "  ${D}Text you added to a file sync writes, such as ~/.codex/AGENTS.md, belongs in ${ME:+people/$ME/}rules/ of the team repo.${N}"
   exit 1
 fi
 
@@ -360,7 +368,7 @@ mkdir -p "$STAGE/.codex" "$STAGE/.config/opencode" "$STAGE/$PLUGIN/.cursor-plugi
 cut -f3 "$RULES" | while IFS= read -r f; do cat "$f"; echo; done > "$TEXT"
 cp "$TEXT" "$STAGE/.config/opencode/AGENTS.md"
 printf '{"name":"agentfiles-rules","version":"1.0.0","description":"Rules from %s, written by bin/sync"}\n' "$TEAM" > "$STAGE/$PLUGIN/.cursor-plugin/plugin.json"
-{ printf -- '---\nalwaysApply: true\n---\n\n- **agentfiles**: These are the agentfiles rules for %s.\n\n' "$ME"; cat "$TEXT"; } > "$STAGE/$PLUGIN/rules/agentfiles.mdc"
+{ printf -- '---\nalwaysApply: true\n---\n\n- **agentfiles**: These are the agentfiles rules for %s.\n\n' "${ME:-the team}"; cat "$TEXT"; } > "$STAGE/$PLUGIN/rules/agentfiles.mdc"
 printf -- '---\nalwaysApply: true\n---\n\n- **agentfiles-missing**: When your context has no rule named **agentfiles**: start every reply with "⚠️ This harness gets none of your agentfiles rules (the cursor-agent CLI reads none). Use the Cursor IDE, T3 Code or another harness."\n' > "$STAGE/$GUARD"
 
 # --- --clean: move aside what's in the way ------------------------------------
@@ -403,5 +411,6 @@ done 3< "$INITS"
 # --- Report ---------------------------------------------------------------
 offs=$( { echo "$OFF_SKILLS" | sed 's/$/ (skill)/'; echo "$OFF_RULES" | sed 's/$/ (rule)/'; echo "$OFF_PRESETS" | sed 's/$/ (preset)/'; } | grep -v '^ (' | paste -sd ',' - | sed 's/,/, /g' || true)
 section "Synced" "$B$G"
-echo "  $(wc -l < "$SKILLS" | tr -d ' ') skills and $(wc -l < "$RULES" | tr -d ' ') rule files for $ME from $(echo "$TEAM" | tilde)${offs:+ ${D}(off: $offs)${N}}. New ones load in a new chat."
+echo "  $(wc -l < "$SKILLS" | tr -d ' ') skills and $(wc -l < "$RULES" | tr -d ' ') rule files for ${ME:-the team} from $(echo "$TEAM" | tilde)${offs:+ ${D}(off: $offs)${N}}. New ones load in a new chat."
+[ -n "$ME" ] || echo "  ${D}No person folder, so shared/ only: bin/sync --me <name> adds yours.${N}"
 sort -u "$FOLLOWED" | while IFS= read -r u; do echo "  ${Y}following${N} $u"; done

@@ -65,7 +65,9 @@ Clone agentfiles, create or clone your team's git project, then run once:
 bin/sync --repo ~/projects/agentfiles-<team> --me <name>
 ```
 
-It remembers both, creates `shared/agentfiles.txt` (with `use preset recommended`) if the team repo has none, and `people/<name>/` with an `agentfiles.txt` listing the forms and a rule, `rules/me.md`, that tells your agent who you are. Make that rule yours: add the names you go by in tickets and chat, and anything else your agent should know about you. Commit and push the team repo.
+It remembers both. In the team repo it creates what's missing: `shared/agentfiles.txt` (with `use preset recommended`), a `README.md` saying what the repo is and how to set it up, and `people/<name>/` with an `agentfiles.txt` listing the forms and a rule, `rules/me.md`, that tells your agent who you are. Make that rule yours: add the names you go by in tickets and chat, and anything else your agent should know about you. Commit and push the team repo.
+
+Leave out `--me` to get `shared/` only, with no folder of your own, for instance when you set up a team repo for others; a later `bin/sync --me <name>` adds yours.
 
 **Your existing setup.** If none of your harnesses has skills or rules yet, the first `bin/sync` sets everything up. Otherwise it changes nothing in your harnesses and lists what it would put in place and what's in its way. Adjust your `agentfiles.txt` and run it again until the list looks right. Then `bin/sync --clean` moves what's in its way to `~/.cache/agentfiles/removed-<date>/`; nothing is deleted. From then on, a plain `bin/sync` keeps it that way.
 
