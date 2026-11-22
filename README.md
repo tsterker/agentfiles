@@ -1,11 +1,11 @@
-# agentfiles-starter
+# agentfiles
 
-A tool that gives a team's coding agents (Claude Code, Codex, Cursor, OpenCode) the same skills and rules, from a team repo where everyone also has a folder of their own that colleagues can borrow from. You clone the starter and pull it; you never edit it. What you tune lives in your team repo.
+A tool that gives a team's coding agents (Claude Code, Codex, Cursor, OpenCode) the same skills and rules, from a team repo where everyone also has a folder of their own that colleagues can borrow from. You clone agentfiles and pull it; you never edit it. What you tune lives in your team repo.
 
 - **Skill**: a folder with a `SKILL.md` that teaches an agent one kind of task. The agent always sees its name and description and reads the rest when a task fits.
 - **Rule**: one line every agent reads in every chat, shaped `- **name**: When <situation>: <do>`. Each one costs attention in every chat, so keep them few.
 
-The other terms are in [GLOSSARY.md](GLOSSARY.md); why it's a tool and not a fork: [docs/adr/0001-the-starter-is-a-tool.md](docs/adr/0001-the-starter-is-a-tool.md).
+The other terms are in [GLOSSARY.md](GLOSSARY.md); why it's a tool and not a fork: [docs/adr/0001-agentfiles-is-a-tool.md](docs/adr/0001-agentfiles-is-a-tool.md).
 
 ## Principles
 
@@ -19,7 +19,7 @@ The other terms are in [GLOSSARY.md](GLOSSARY.md); why it's a tool and not a for
 ## Layout
 
 ```
-the starter (this repo; pull it, never edit it)
+agentfiles (this repo; pull it, never edit it)
   bin/sync, bin/probe
   bin/skills/agentfiles/         the core: everyone gets it
   presets/<name>/                pocock, habits, and recommended, which uses both
@@ -43,7 +43,7 @@ Every line is `<verb> <kind> <what>`; everything after a `#` is skipped. Line or
 
 ```
 format v1                                   the file's format; sync stops on any other (CHANGELOG.md)
-use    preset recommended                   a preset from the starter's or the team repo's presets/
+use    preset recommended                   a preset from agentfiles or the team repo's presets/
 use    person ana                           a colleague's skills and rules; their own lines and init scripts stay theirs
 use    skill  ana-review                    one skill from a colleague's folder
 use    folder ~/projects/my-skills          a folder on your disk, linked live
@@ -59,7 +59,7 @@ A preset, folder or git source uses other sources the same way, read once each. 
 
 ## Use
 
-Clone the starter, create or clone your team's git project, then run once:
+Clone agentfiles, create or clone your team's git project, then run once:
 
 ```sh
 bin/sync --repo ~/projects/agentfiles-<team> --me <name>
@@ -81,7 +81,7 @@ Or just ask your agent: "make that a skill of mine", "turn off X", "use Ana's re
 | run setup that links can't do | a script in `init/`; it must be safe to run again, and its failure stops sync |
 | let an app install its skill where sync owns everything | a `keep` line, and an `init/` script that checks the app did |
 | give a skill, rule or line to everyone | move it into `shared/`, agreed with the team |
-| move to a new starter release | pull the starter; when sync stops on the format, `CHANGELOG.md` says what to change |
+| move to a new agentfiles release | pull agentfiles; when sync stops on the format, `CHANGELOG.md` says what to change |
 | check that every harness sees your skills and rules | `bin/probe`, once sync has set up; it asks each harness for a throwaway rule and skill, then removes them |
 
 ## Tune it as you go

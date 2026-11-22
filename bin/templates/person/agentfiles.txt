@@ -2,7 +2,7 @@
 # and off always wins.
 format v1
 
-# use preset pocock                     a preset from the starter's or the team repo's presets/
+# use preset pocock                     a preset from agentfiles or the team repo's presets/
 # use person ana                        a colleague's whole folder: skills and rules
 # use skill  ana-review                 one skill from a colleague's folder
 # use folder ~/projects/my-skills       a folder on your disk, linked live, never committed

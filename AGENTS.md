@@ -1,4 +1,4 @@
-# agentfiles-starter
+# agentfiles
 
 What this repo is, its principles and how it's used: `README.md`. Its terms: `GLOSSARY.md`. Why it's a tool teams pull rather than a fork: `docs/adr/`. How a person changes their setup in a team repo: `bin/skills/agentfiles/SKILL.md`.
 

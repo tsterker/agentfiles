@@ -24,16 +24,16 @@ _Avoid_: plugin, hook, installer
 
 ### Where it comes from
 
-**Starter**:
-The public tool: the sync scripts, the core, the presets it ships and the docs. Teams pull it and never edit it.
-_Avoid_: upstream, template, base
+**Agentfiles**:
+The public tool: the sync scripts, the core, the presets it ships and the docs, in the agentfiles repo that teams clone and pull and never edit.
+_Avoid_: starter, upstream, template, base
 
 **Core**:
-What the starter gives everyone, with no way to turn it off: the `agentfiles` skill and the names the harnesses themselves keep in the folders sync owns.
+What agentfiles gives everyone, with no way to turn it off: the `agentfiles` skill and the names the harnesses themselves keep in the folders sync owns.
 _Avoid_: defaults, base, built-ins
 
 **Team repo**:
-A team's own git repository of shared, person and preset folders, which the starter reads.
+A team's own git repository of shared, person and preset folders, which agentfiles reads.
 _Avoid_: fork, config repo, dotfiles
 
 **Source**:
@@ -53,7 +53,7 @@ The person a machine syncs for; an agent on that machine works for them.
 _Avoid_: current user, self, account
 
 **Preset**:
-A source with a name and no owner, taken whole with one line: the starter ships some, and a team can add its own.
+A source with a name and no owner, taken whole with one line: agentfiles ships some, and a team can add its own.
 _Avoid_: profile, bundle, pack, catalog
 
 ### How it reaches a machine
@@ -75,7 +75,7 @@ A name sync leaves alone in the folders it owns, because another tool installs i
 _Avoid_: allow, ignore, whitelist, exception
 
 **Format**:
-The version of the `agentfiles.txt` language a file is written in; the starter reads exactly one and stops on any other.
+The version of the `agentfiles.txt` language a file is written in; agentfiles reads exactly one and stops on any other.
 _Avoid_: schema, version, edition
 
 **Sync**:

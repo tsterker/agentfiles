@@ -13,9 +13,9 @@ command -v jq >/dev/null || die "needs jq on PATH (macOS 15 and later ship /usr/
 case $HOME in *[[:space:]]*) die "expected a home folder without spaces; got '$HOME'" ;; esac
 shopt -s dotglob   # globs include hidden entries, so nothing in a folder sync owns slips past it
 
-STARTER=$(cd "$(dirname "$0")/.." && pwd -P)
-FORMAT=v1                     # the one agentfiles.txt format this starter reads
-LOCAL=$STARTER/.local         # me and the team repo, for this machine; gitignored
+AGENTFILES=$(cd "$(dirname "$0")/.." && pwd -P)
+FORMAT=v1                     # the one agentfiles.txt format this release reads
+LOCAL=$AGENTFILES/.local         # me and the team repo, for this machine; gitignored
 CACHE=$HOME/.cache/agentfiles
 SKILL_DIRS="$HOME/.claude/skills $HOME/.agents/skills"
 RULE_DIR=$HOME/.claude/rules
@@ -55,20 +55,20 @@ fi
 case $ME in [a-z0-9]*) ;; *) die "--me takes a name starting with a-z or 0-9; got '$ME'" ;; esac
 case $ME in *[!a-z0-9._-]*) die "--me takes a name of a-z, 0-9, '.', '_' and '-'; got '$ME'" ;; esac
 case $TEAM in *[[:space:]]*) die "expected a team repo path without spaces; got '$TEAM'" ;; esac
-[ "$TEAM" != "$STARTER" ] || die "expected a team repo of its own; got the starter itself. Clone your team's project elsewhere"
+[ "$TEAM" != "$AGENTFILES" ] || die "expected a team repo of its own; got the agentfiles repo itself. Clone your team's project elsewhere"
 [ -e "$TEAM/.git" ] || [ -d "$TEAM/.jj" ] || die "expected a git repo at $TEAM; found a plain folder. Clone your team's project there first"
 printf 'me %s\nrepo %s\n' "$ME" "$TEAM" > "$LOCAL"
 
 welcome=
 if [ ! -f "$TEAM/shared/agentfiles.txt" ]; then
   [ -n "$REPO" ] || die "expected $TEAM/shared/agentfiles.txt; it's missing. Run bin/sync --repo $TEAM to create it"
-  mkdir -p "$TEAM/shared" && cp "$STARTER/bin/templates/shared/agentfiles.txt" "$TEAM/shared/"
+  mkdir -p "$TEAM/shared" && cp "$AGENTFILES/bin/templates/shared/agentfiles.txt" "$TEAM/shared/"
   welcome="Created shared/agentfiles.txt in $TEAM: what everyone on the team gets."
 fi
 MINE=$TEAM/people/$ME
 if [ ! -d "$MINE" ]; then
   [ -n "$ASKED" ] || die "expected your folder people/$ME/ in $TEAM; it's missing. Run bin/sync --me $ME to create it"
-  mkdir -p "$TEAM/people" && cp -R "$STARTER/bin/templates/person" "$MINE"
+  mkdir -p "$TEAM/people" && cp -R "$AGENTFILES/bin/templates/person" "$MINE"
   find "$MINE" -type f -exec sed -i '' "s/{{me}}/$ME/g" {} +
   welcome="${welcome:+$welcome
   }Created people/$ME/. Make rules/me.md yours: add the names you go by."
@@ -84,7 +84,7 @@ fi
 lines() { [ -f "$1" ] || return 0; sed -e 's/[[:space:]]*#.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$1" | grep -v -e '^$' || true; }
 tilde() { sed "s|$HOME|~|g"; }
 has() { awk -F"$TAB" -v c="$2" -v v="$3" '$c == v {f = 1} END {exit !f}' "$1"; }   # has <file> <column> <value>
-rel() { echo "$1" | sed -e "s|^$TEAM/||" -e "s|^$STARTER/|starter: |" -e "s|^$CACHE/git/|git: |" -e "s|^$CACHE/follow/|followed: |" -e "s|^$HOME|~|"; }
+rel() { echo "$1" | sed -e "s|^$TEAM/||" -e "s|^$AGENTFILES/|agentfiles: |" -e "s|^$CACHE/git/|git: |" -e "s|^$CACHE/follow/|followed: |" -e "s|^$HOME|~|"; }
 
 # --- Sources: what each one brings, then what it uses -------------------------
 W=$(mktemp -d)   # this run's scratch files
@@ -149,7 +149,7 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill|person]
   [ "$n" -le 1 ] || die "$where: expected one 'format' line; found $n"
   p=$(echo "$body" | awk '$1 == "format" {print $2}')
   [ -n "$p" ] || die "$where: expected a 'format $FORMAT' line; found none"
-  [ "$p" = "$FORMAT" ] || die "$where: this file is format $p; this starter reads format $FORMAT. See $STARTER/CHANGELOG.md"
+  [ "$p" = "$FORMAT" ] || die "$where: this file is format $p; this agentfiles release reads format $FORMAT. See $AGENTFILES/CHANGELOG.md"
   while IFS= read -r line; do
     set -f; set -- $line; set +f
     verb=$1 kind=${2:-} what=${3:-}
@@ -163,11 +163,11 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill|person]
       use/preset)
         echo "$what" >> "$USED"
         ! echo "$OFF_PRESETS" | grep -qxF "$what" || continue
-        if [ -d "$STARTER/presets/$what" ] && [ -d "$TEAM/presets/$what" ]; then
-          die "$where: two presets named $what, the starter's and the team repo's presets/$what; rename the team's"
-        elif [ -d "$STARTER/presets/$what" ]; then read_source "$STARTER/presets/$what" "preset $what" "$followed"
+        if [ -d "$AGENTFILES/presets/$what" ] && [ -d "$TEAM/presets/$what" ]; then
+          die "$where: two presets named $what, one in agentfiles and one in the team repo's presets/$what; rename the team's"
+        elif [ -d "$AGENTFILES/presets/$what" ]; then read_source "$AGENTFILES/presets/$what" "preset $what" "$followed"
         elif [ -d "$TEAM/presets/$what" ]; then read_source "$TEAM/presets/$what" "preset $what" "$followed"
-        else die "$where: found no preset '$what' in the starter's or the team repo's presets/"; fi ;;
+        else die "$where: found no preset '$what' in agentfiles or the team repo's presets/"; fi ;;
       use/person)
         [ -d "$TEAM/people/$what" ] || die "$where: 'use person $what' expects people/$what/ in the team repo; it's missing"
         read_source "$TEAM/people/$what" "people/$what" "$followed" person ;;
@@ -194,7 +194,7 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill|person]
 OFF_PRESETS=$( { lines "$TEAM/shared/agentfiles.txt"; lines "$MINE/agentfiles.txt"; } | awk '$1 == "off" && $2 == "preset" {print $3}' | sort -u)
 read_source "$TEAM/shared" shared 0
 read_source "$MINE" "people/$ME" 0
-read_source "$STARTER/bin/skills/agentfiles" core 0 skill   # the core, which nobody turns off
+read_source "$AGENTFILES/bin/skills/agentfiles" core 0 skill   # the core, which nobody turns off
 
 # --- Off: check my own lines, then drop what's off -----------------------------
 offs() { awk -F"$TAB" -v k="$1" '$1 == k {print $2}' "$OFFS" | sort -u; }
@@ -256,7 +256,7 @@ mkdir -p "$CACHE/written"
 touch "$CACHE/links"
 ours() {   # a link that still points where sync put it, or a file sync wrote that nobody changed since
   if [ -L "$1" ]; then
-    grep -qxF "$1$TAB$(readlink "$1")" "$CACHE/links" || case $(readlink "$1") in "$STARTER"/*) true ;; *) false ;; esac
+    grep -qxF "$1$TAB$(readlink "$1")" "$CACHE/links" || case $(readlink "$1") in "$AGENTFILES"/*) true ;; *) false ;; esac
   else
     [ -e "$CACHE/written/${1#$HOME/}" ] && diff -rq -x .DS_Store "$1" "$CACHE/written/${1#$HOME/}" >/dev/null 2>&1
   fi
@@ -378,10 +378,10 @@ mkdir -p $SKILL_DIRS "$RULE_DIR"
 while IFS="$TAB" read -r p target; do   # remove my links that are no longer wanted
   cut -f1 "$LINKS" | grep -qxF "$p" || { [ -L "$p" ] && [ "$(readlink "$p")" = "$target" ] && rm "$p"; } || true
 done < "$CACHE/links"
-for d in $OWNED_DIRS; do   # links into the starter that sync no longer plans, from before it kept a list
+for d in $OWNED_DIRS; do   # links into the agentfiles repo that sync no longer plans, from before it kept a list
   for p in "$d"/*; do
     [ -L "$p" ] && ! kept "$p" || continue
-    case $(readlink "$p") in "$STARTER"/*) cut -f1 "$LINKS" | grep -qxF "$p" || rm "$p" ;; esac
+    case $(readlink "$p") in "$AGENTFILES"/*) cut -f1 "$LINKS" | grep -qxF "$p" || rm "$p" ;; esac
   done
 done
 rm -rf "$CACHE/rules" && cp -R "$W/rule-copies" "$CACHE/rules"
@@ -396,7 +396,7 @@ rm -rf "$CACHE/written" && cp -R "$STAGE" "$CACHE/written"
 if grep -q . "$INITS" || [ -n "$OFF_INITS" ]; then section "Init scripts"; fi
 echo "$OFF_INITS" | while IFS= read -r name; do [ -z "$name" ] || echo "  ${D}○ $name (off)${N}"; done
 while IFS="$TAB" read -r -u 3 name f; do   # fd 3, so a script that asks something reads your terminal
-  ME=$ME REPO=$TEAM STARTER=$STARTER bash "$f" 3<&- || die "init script $(rel "$f") failed"
+  ME=$ME REPO=$TEAM AGENTFILES=$AGENTFILES bash "$f" 3<&- || die "init script $(rel "$f") failed"
   echo "  ${G}✓${N} $(rel "$f")"
 done 3< "$INITS"
 
