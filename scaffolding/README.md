@@ -10,14 +10,15 @@ git clone {{origin}} ~/projects/{{folder}}
 ~/projects/agentfiles/bin/sync --repo ~/projects/{{folder}} --me <your name>
 ```
 
-`--me` creates your own folder in `people/`; leave it out to get `shared/` only. After every pull of either repo, run `bin/sync` again and start a new chat.
+`--me` creates your own folder in `people/`; leave it out to get `shared/` only. After every pull of either repo, run `bin/sync` again and start a new chat. Or ask your agent to "update agentfiles".
 
 ## Layout
 
 ```
-shared/           what everyone gets; change it through a merge request
-people/<name>/    one person's own skills and rules; push without asking
-presets/<name>/   optional: the team's own presets
+shared/           what everyone gets, agreed with the team
+people/<name>/    one person's own skills and rules
 ```
+
+Everything in `shared/` is the team's: read each file, then change or delete what you don't agree with.
 
 Each folder's `agentfiles.txt` says what else it uses, turns off and keeps; the forms are in the agentfiles README. Or ask your agent: "make that a skill of mine", "turn off X", "use Ana's review skill".

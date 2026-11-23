@@ -7,4 +7,4 @@ What this repo is, its principles and how it's used: `README.md`. Its terms: `GL
 - **brief**: When writing docs, comments or script output: use as few lines as it takes, and point to the README or GLOSSARY for anything they already say.
 - **words**: When naming a concept: use the GLOSSARY's word; a new concept gets its entry there in the same change.
 - **bash 3.2**: When editing `bin/` or an `init/` script: macOS `/bin/bash` 3.2 and its standard tools only; check any other tool at the top and stop naming it when it's missing.
-- **release**: When a change alters what `agentfiles.txt` accepts or means, or the team repo's layout: bump `FORMAT` in `bin/sync` and every `agentfiles.txt` in `scaffolding/` and `presets/`, and say in `CHANGELOG.md` what a team repo must change. Every release bumps `VERSION` and gets an entry there.
+- **release**: When a change alters what `agentfiles.txt` accepts or means, or the team repo's layout: bump `FORMAT` in `bin/sync` and every `agentfiles.txt` in `scaffolding/` and `templates/`, and say in `CHANGELOG.md` what a team repo must change. Every release bumps `VERSION` and gets an entry there.

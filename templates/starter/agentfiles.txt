@@ -1,8 +1,10 @@
-# Matt Pocock's skills (MIT): grilling and its family, writing for agents, and the engineering loop,
-# debugging, handoffs and retros, with every skill these call. rules/ points skills that need an issue
-# tracker at local markdown.
-format v1
+# What everyone on the team gets, one line each: <verb> <kind> <what>. Line order doesn't matter,
+# and off always wins. The forms are in people/<you>/agentfiles.txt and the agentfiles README.
+format v2
 
+# Matt Pocock's skills (MIT): grilling and its family, writing for agents, and the engineering loop,
+# debugging, handoffs and retros, with every skill these call. rules/projects.md points skills that
+# need an issue tracker at local markdown.
 use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grilling
 use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grill-me
 use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/grill-with-docs
@@ -18,3 +20,7 @@ use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/setu
 use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/diagnosing-bugs
 use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/handoff
 use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/engineering/retro
+
+# pstack's principles (MIT): check the real thing before calling it done; remove before adding.
+use git https://github.com/michael-denyer/pstack-claude/tree/v0.9.112/plugins/pstack/skills/principle-prove-it-works
+use git https://github.com/michael-denyer/pstack-claude/tree/v0.9.112/plugins/pstack/skills/principle-subtract-before-you-add

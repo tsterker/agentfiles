@@ -1,5 +1,3 @@
 # What everyone on the team gets, one line each: <verb> <kind> <what>. Line order doesn't matter,
 # and off always wins. The forms are in people/<you>/agentfiles.txt and the agentfiles README.
-format v1
-
-use preset recommended   # agentfiles' first good starting point: off what you don't want, or list its parts
+format v2

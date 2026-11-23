@@ -25,19 +25,19 @@ _Avoid_: plugin, hook, installer
 ### Where it comes from
 
 **Agentfiles**:
-The public tool: the sync scripts, the core, the presets it ships and the docs, in the agentfiles repo that teams clone and pull and never edit.
-_Avoid_: starter, upstream, template, base
+The public tool: the scripts, the core, the templates it ships and the docs, in the agentfiles repo that teams clone and pull and never edit.
+_Avoid_: starter, upstream, base
 
 **Core**:
 What agentfiles gives everyone, with no way to turn it off, and only what makes agentfiles itself work: the `agentfiles` skill, its `agentfiles-first` rule, and the names the harnesses themselves keep in the folders sync owns.
 _Avoid_: defaults, base, built-ins
 
 **Team repo**:
-A team's own git repository of shared, person and preset folders, which agentfiles reads.
+A team's own git repository of shared and person folders, which agentfiles reads.
 _Avoid_: fork, config repo, dotfiles
 
 **Source**:
-A folder that brings skills, rules and init scripts, and an `agentfiles.txt` saying what else it uses: shared, a person's folder, a preset, a folder on disk, or a git repository or part of one.
+A folder that brings skills, rules and init scripts, and an `agentfiles.txt` saying what else it uses: shared, a person's folder, a folder on disk, or a git repository or part of one.
 _Avoid_: package, module, bundle
 
 **Shared**:
@@ -52,9 +52,9 @@ _Avoid_: user, member, owner
 The person a machine syncs for; an agent on that machine works for them.
 _Avoid_: current user, self, account
 
-**Preset**:
-A source with a name and no owner, taken whole with one line: agentfiles ships some, and a team can add its own.
-_Avoid_: profile, bundle, pack, catalog
+**Template**:
+A folder of rules, skills and `agentfiles.txt` lines that agentfiles ships and `bin/init` copies once into a new team repo's `shared/`; from then on the copy is the team's, and nothing links it back.
+_Avoid_: preset, profile, bundle, pack
 
 ### How it reaches a machine
 
@@ -67,7 +67,7 @@ A use of a git branch rather than a tag or commit, fetched again on every sync.
 _Avoid_: track, latest, float
 
 **Off**:
-A line dropping a skill, rule, init script or preset one would otherwise get, wherever it comes from.
+A line dropping a skill, rule or init script one would otherwise get, wherever it comes from except the core.
 _Avoid_: disable, park, mute, blocklist
 
 **Keep**:

@@ -2,6 +2,17 @@
 
 Each release names its `agentfiles.txt` format. When the format changes, its entry says what a team repo must change; releases that keep the format ask nothing of a team.
 
+## 0.3.0 (format v2)
+
+Presets give way to templates, copied once into a new team repo ([ADR 0002](docs/adr/0002-templates-are-copied-once.md)), and the core gets a rule.
+
+- `bin/init <path> [--template starter]` makes a new team repo: `shared/`, a `README.md`, and the template's files, which are the team's from then on. `bin/sync` no longer creates `shared/` and stops when it's missing.
+- `use preset`, `off preset` and a team repo's `presets/` are gone; the `pocock`, `habits` and `recommended` presets became one template, `templates/starter/`.
+- The core adds the rule `agentfiles-first`, which sends skill and rule changes through the agentfiles skill; nobody can turn it off. The skill no longer puts `shared/` changes on a branch: it follows the team's rules, and asks before pushing where they say nothing.
+- The core moved to `core/` and the scaffolding to `scaffolding/`; `bin/` holds only scripts.
+
+**What a team repo must change:** in every `agentfiles.txt`, write `format v2`. Replace each `use preset <name>` with the lines of `templates/starter/agentfiles.txt`, copy in the files of `templates/starter/rules/` the team wants, and delete any `off preset` lines and `presets/` folder (move its contents into `shared/` or a person's folder). A rule of your own named `agentfiles-first` now clashes with the core's: delete it.
+
 ## 0.2.0 (format v1)
 
 The tool is called agentfiles; "starter" is gone from its docs and output. A team repo changes nothing.

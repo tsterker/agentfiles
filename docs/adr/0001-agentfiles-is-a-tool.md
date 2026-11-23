@@ -1,5 +1,7 @@
 # Agentfiles is a tool, not a fork
 
+_Its presets are superseded by [0002](0002-templates-are-copied-once.md): templates copied once._
+
 Teams clone agentfiles and pull it; they never edit it. Their skills and rules live in a team repo of their own, which its `bin/sync` reads. Agentfiles claims only `bin/` (with the core), `presets/` and its docs, so it can ship opinionated presets without ever conflicting with what a team has tuned, and a team takes any of it, or none, through lines in its `agentfiles.txt`.
 
 ## Considered options

@@ -1,0 +1,43 @@
+#!/bin/bash
+# Makes a git repo a new team repo: shared/ and a README.md, and a template's files copied in once.
+# Usage: bin/init <path> [--template <name>]
+set -euo pipefail
+
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  B=$(printf '\033[1m') R=$(printf '\033[31m') G=$(printf '\033[32m') N=$(printf '\033[0m')
+else B= R= G= N=; fi
+die() { echo "${R}init: $*${N}" >&2; exit 1; }
+command -v git >/dev/null || die "needs git on PATH; found none"
+
+AGENTFILES=$(cd "$(dirname "$0")/.." && pwd -P)
+REPO= TEMPLATE=
+while [ $# -gt 0 ]; do
+  case $1 in
+    --template) [ $# -ge 2 ] || die "--template needs a name"; [ -z "$TEMPLATE" ] || die "expected one --template; got a second, '$2'"; TEMPLATE=$2; shift 2 ;;
+    -*) die "unknown argument '$1'; expected <path> or --template <name>" ;;
+    *) [ -z "$REPO" ] || die "expected one path; got '$REPO' and '$1'"; REPO=$1; shift ;;
+  esac
+done
+[ -n "$REPO" ] || die "which repo? Usage: bin/init <path> [--template <name>]"
+case $REPO in "~/"*) REPO=$HOME/${REPO#"~/"} ;; esac
+[ -d "$REPO" ] || die "expected a git repo at $REPO; found no folder. Create or clone your team's project there first"
+TEAM=$(cd "$REPO" && pwd -P)
+[ "$TEAM" != "$AGENTFILES" ] || die "expected a team repo of its own; got the agentfiles repo itself"
+[ -e "$TEAM/.git" ] || [ -d "$TEAM/.jj" ] || die "expected a git repo at $TEAM; found a plain folder"
+[ ! -e "$TEAM/shared" ] || die "$TEAM already has shared/; init makes a new team repo. To join it: bin/sync --repo $TEAM --me <name>"
+[ -z "$TEMPLATE" ] || [ -d "$AGENTFILES/templates/$TEMPLATE" ] || die "found no template '$TEMPLATE'; there are: $(ls "$AGENTFILES/templates" | paste -sd ' ' -)"
+
+mkdir -p "$TEAM/shared" && cp "$AGENTFILES/scaffolding/shared/agentfiles.txt" "$TEAM/shared/"
+[ -z "$TEMPLATE" ] || cp -R "$AGENTFILES/templates/$TEMPLATE/" "$TEAM/shared/"
+made=shared
+if [ ! -e "$TEAM/README.md" ]; then   # what the repo is, for whoever opens it
+  made="$made README.md"
+  url=$(git -C "$AGENTFILES" remote get-url origin 2>/dev/null | sed -e 's|^git@\([^:]*\):|https://\1/|' -e 's|\.git$||' || true)
+  origin=$(git -C "$TEAM" remote get-url origin 2>/dev/null || echo "<this repo's clone URL>")
+  sed -e "s|{{folder}}|$(basename "$TEAM")|g" -e "s|{{agentfiles}}|${url:-https://github.com/tsterker/agentfiles}|g" -e "s|{{origin}}|$origin|g" \
+    "$AGENTFILES/scaffolding/README.md" > "$TEAM/README.md"
+fi
+
+echo "${B}${G}Made $TEAM a team repo.${N} These files are the team's now: read each, then change or delete what you don't agree with."
+(cd "$TEAM" && find $made -type f | sort | sed 's/^/  /')
+echo "Next: commit and push it, then run ${B}bin/sync --repo $TEAM --me <your name>${N}."
