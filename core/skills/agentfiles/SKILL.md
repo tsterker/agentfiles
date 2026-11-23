@@ -11,7 +11,7 @@ First, **find the two repos and me.** The agentfiles repo is `git -C "$(cd <this
 
 1. **Pick the place.** Work in `people/<me>/` of the team repo. Use `shared/` only when the user says it's for everyone or the team. With no `me`, offer `bin/sync --me <name>` for a folder of their own, or `shared/`.
 2. **Pick the kind.**
-   - **Rule**: guidance that must hold in every chat, in one line: `- **<name>**: When <situation>: <do>.` Add it to the fitting `rules/<topic>.md`, or a new topic file. Rules cost attention in every chat, so prefer a skill when the guidance matters only for some tasks.
+   - **Rule**: guidance that must hold in every chat, in one line: `- **<name>**: When <situation>: <do>.` Add it to the `rules/<topic>.md` named for what the agent is doing when it applies (`replies`, `facts`, `git`, `tickets`), or a new one. Rules cost attention in every chat, so prefer a skill when the guidance matters only for some tasks.
    - **Skill**: a procedure or knowledge needed for some tasks: `skills/<name>/SKILL.md`, its frontmatter `name` equal to the folder name and a `description` saying what it is and when to use it. The name must be unique across everything the user gets; `<me>-<name>` is a safe default.
    - **A line in `agentfiles.txt`**: `use` or `follow` a person, skill, folder or git source; `off` a skill, rule or init script; `keep` a name another tool installs. A git source pins a tag or full commit with `use`; `follow` a branch only when the user asks for it, after naming the risk: whoever pushes to it shapes their agent.
    - **Init script**: setup links can't do, such as installing a plugin or checking that an app installed its skill: `init/<name>.sh`, safe to run again.

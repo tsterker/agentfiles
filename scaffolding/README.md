@@ -4,7 +4,7 @@ The skills and rules our coding agents share (Claude Code, Codex, Cursor, OpenCo
 
 ## Set up
 
-In any folder you keep projects in:
+In any folder you keep projects in, as long as its path has no spaces (sync stops on one):
 
 ```sh
 git clone {{agentfiles}}.git

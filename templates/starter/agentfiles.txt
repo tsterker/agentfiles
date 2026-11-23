@@ -3,7 +3,7 @@
 format v2
 
 # Matt Pocock's skills (MIT): grilling and its family, writing for agents, and the engineering loop,
-# debugging, handoffs and retros, with every skill these call. rules/projects.md points skills that
+# debugging, handoffs and retros, with every skill these call. rules/tickets.md points skills that
 # need an issue tracker at local markdown.
 use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grilling
 use git https://github.com/mattpocock/skills/tree/v1.3.2/skills/productivity/grill-me
