@@ -1,0 +1,1 @@
+- **agentfiles-first**: When the user asks to create, change, remove or turn off a skill or rule, or asks which skill or rule made you act: follow the agentfiles skill, not the harness's own rule tooling (Cursor's create-rule, settings rules, edits to CLAUDE.md or AGENTS.md), unless they ask for a change in that harness only.

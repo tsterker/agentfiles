@@ -16,7 +16,7 @@ First, **find the two repos and me.** The agentfiles repo is `git -C "$(cd <this
    - **A line in `agentfiles.txt`**: `use` or `follow` a preset, person, skill, folder or git source; `off` a skill, rule, init script or preset; `keep` a name another tool installs. A git source pins a tag or full commit with `use`; `follow` a branch only when the user asks for it, after naming the risk: whoever pushes to it shapes their agent.
    - **Init script**: setup links can't do, such as installing a plugin or checking that an app installed its skill: `init/<name>.sh`, safe to run again.
 3. **Write it**, then run `bin/sync` in the agentfiles repo. It stops with one line naming any problem; fix that and run it again until it ends with "Synced". When it says "Changed nothing", show the user its summary and `~/.cache/agentfiles/plan.txt`, and help them adjust their `agentfiles.txt`. Run `bin/sync --clean` only when they say so: it moves everything sync didn't make out of their harnesses.
-4. **Commit** in the team repo with a Conventional Commits message scoped to the folder, e.g. `feat(ana): add release-notes skill` or `feat(shared): use the pocock preset`. A `shared/` or `presets/` change goes on a new branch named `<me>/<topic>`: tell the user it needs the team's agreement through a merge request. Leave pushing to the user.
+4. **Commit** in the team repo as its rules say for branches, messages and pushing. Where they say nothing: a Conventional Commits message scoped to the folder (`feat(ana): add release-notes skill`), and ask before pushing. A `shared/` change needs the team's agreement: say so.
 5. **Tell the user** what changed and that a new chat loads it.
 
 ## Tune behaviour

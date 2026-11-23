@@ -15,13 +15,14 @@ The other terms are in [GLOSSARY.md](GLOSSARY.md); why it's a tool and not a for
 4. **Nothing unasked.** A preset, a colleague's skills or a git source reaches you only through a `use` line, yours or your team's. Sync never moves or replaces anything it didn't make unless you run `--clean`.
 5. **All or nothing.** Sync either owns every folder and file your harnesses read skills and rules from, or changes nothing and shows its plan. It leaves `keep` names alone, and reports the subagents, hooks, MCP servers and plugins it doesn't manage.
 6. **Git is the archive.** Delete what only you use; turn off what others still use.
+7. **The core runs agentfiles, nothing more.** Everyone gets the `agentfiles` skill and its `agentfiles-first` rule, which send skill and rule changes through the team repo, with no way to turn them off. How your agent works on anything else (branches, pushing, how it replies) comes from your team repo.
 
 ## Layout
 
 ```
 agentfiles (this repo; pull it, never edit it)
   bin/sync, bin/probe
-  core/skills/agentfiles/        the core: everyone gets it
+  core/                          the agentfiles skill and rule: everyone gets them
   scaffolding/                   what sync creates in a team repo
   presets/<name>/                pocock, habits, and recommended, which uses both
   CHANGELOG.md                   what each release changes, and what a team repo must change

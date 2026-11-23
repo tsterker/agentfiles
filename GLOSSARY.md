@@ -29,7 +29,7 @@ The public tool: the sync scripts, the core, the presets it ships and the docs, 
 _Avoid_: starter, upstream, template, base
 
 **Core**:
-What agentfiles gives everyone, with no way to turn it off: the `agentfiles` skill and the names the harnesses themselves keep in the folders sync owns.
+What agentfiles gives everyone, with no way to turn it off, and only what makes agentfiles itself work: the `agentfiles` skill, its `agentfiles-first` rule, and the names the harnesses themselves keep in the folders sync owns.
 _Avoid_: defaults, base, built-ins
 
 **Team repo**:

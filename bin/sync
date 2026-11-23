@@ -202,7 +202,7 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill|person]
 OFF_PRESETS=$( { lines "$TEAM/shared/agentfiles.txt"; [ -z "$ME" ] || lines "$MINE/agentfiles.txt"; } | awk '$1 == "off" && $2 == "preset" {print $3}' | sort -u)
 read_source "$TEAM/shared" shared 0
 [ -z "$ME" ] || read_source "$MINE" "people/$ME" 0
-read_source "$AGENTFILES/core/skills/agentfiles" core 0 skill   # the core, which nobody turns off
+read_source "$AGENTFILES/core" core 0   # the core, which nobody turns off
 
 # --- Off: check my own lines, then drop what's off -----------------------------
 offs() { awk -F"$TAB" -v k="$1" '$1 == k {print $2}' "$OFFS" | sort -u; }
@@ -217,17 +217,20 @@ while IFS="$TAB" read -r kind name; do   # a team or preset line that matches no
   case $kind in
     skill) [ "$name" != agentfiles ] || die "$where: 'off skill agentfiles': the core can't be turned off"
            has "$SKL" 1 "$name" || die "$where: 'off skill $name' matches no skill you'd get" ;;
-    rule) has "$RULENAMES" 1 "$name" || die "$where: 'off rule $name' matches no rule you'd get" ;;
+    rule) ! awk -F"$TAB" -v n="$name" '$1 == n && $3 == "core" {f = 1} END {exit !f}' "$RULENAMES" || die "$where: 'off rule $name': the core can't be turned off"
+          has "$RULENAMES" 1 "$name" || die "$where: 'off rule $name' matches no rule you'd get" ;;
     init) has "$INI" 1 "$name" || die "$where: 'off init $name' matches no init script you'd get" ;;
     preset) grep -qxF "$name" "$USED" || die "$where: 'off preset $name' matches no preset you'd get" ;;
   esac
 done <<< "$mine_offs"
-OFF_SKILLS=$(offs skill) OFF_RULES=$(offs rule) OFF_INITS=$(offs init)
+CORE=$( { awk -F"$TAB" '$3 == "core" {print $1 " (skill)"}' "$SKL"; awk -F"$TAB" '$3 == "core" {print $1 " (rule)"}' "$RULENAMES"; } | paste -sd ',' - | sed 's/,/, /g')
+notcore() { grep -vxF -f <(awk -F"$TAB" '$3 == "core" {print $1}' "$SKL" "$RULENAMES"; echo) || true; }   # a team's off line can't reach the core
+OFF_SKILLS=$(offs skill | notcore) OFF_RULES=$(offs rule | notcore) OFF_INITS=$(offs init)
 
 SKILLS=$W/skills   # name, folder
 OFF=$OFF_SKILLS awk -F"$TAB" '   # through the environment: BSD awk rejects a -v value with a newline
   BEGIN { n = split(ENVIRON["OFF"], o, "\n"); for (i = 1; i <= n; i++) skip[o[i]] = 1 }
-  skip[$1] && $3 != "core" { next }
+  skip[$1] { next }
   ($1 in dir) && dir[$1] != $2 { print "sync: two skills named " $1 ": from " from[$1] " and " $3 > "/dev/stderr"; bad = 1 }
   !($1 in dir) { dir[$1] = $2; from[$1] = $3; print $1 "\t" $2 }
   END { exit bad }' "$SKL" > "$SKILLS" || exit 1
@@ -412,5 +415,6 @@ done 3< "$INITS"
 offs=$( { echo "$OFF_SKILLS" | sed 's/$/ (skill)/'; echo "$OFF_RULES" | sed 's/$/ (rule)/'; echo "$OFF_PRESETS" | sed 's/$/ (preset)/'; } | grep -v '^ (' | paste -sd ',' - | sed 's/,/, /g' || true)
 section "Synced" "$B$G"
 echo "  $(wc -l < "$SKILLS" | tr -d ' ') skills and $(wc -l < "$RULES" | tr -d ' ') rule files for ${ME:-the team} from $(echo "$TEAM" | tilde)${offs:+ ${D}(off: $offs)${N}}. New ones load in a new chat."
+echo "  ${D}Core, from agentfiles and always on: $CORE${N}"
 [ -n "$ME" ] || echo "  ${D}No person folder, so shared/ only: bin/sync --me <name> adds yours.${N}"
 sort -u "$FOLLOWED" | while IFS= read -r u; do echo "  ${Y}following${N} $u"; done
