@@ -21,7 +21,8 @@ The other terms are in [GLOSSARY.md](GLOSSARY.md); why it's a tool and not a for
 ```
 agentfiles (this repo; pull it, never edit it)
   bin/sync, bin/probe
-  bin/skills/agentfiles/         the core: everyone gets it
+  core/skills/agentfiles/        the core: everyone gets it
+  scaffolding/                   what sync creates in a team repo
   presets/<name>/                pocock, habits, and recommended, which uses both
   CHANGELOG.md                   what each release changes, and what a team repo must change
 

@@ -61,14 +61,14 @@ case $TEAM in *[[:space:]]*) die "expected a team repo path without spaces; got 
 welcome=
 if [ ! -f "$TEAM/shared/agentfiles.txt" ]; then
   [ -n "$REPO" ] || die "expected $TEAM/shared/agentfiles.txt; it's missing. Run bin/sync --repo $TEAM to create it"
-  mkdir -p "$TEAM/shared" && cp "$AGENTFILES/bin/templates/shared/agentfiles.txt" "$TEAM/shared/"
+  mkdir -p "$TEAM/shared" && cp "$AGENTFILES/scaffolding/shared/agentfiles.txt" "$TEAM/shared/"
   welcome="Created shared/agentfiles.txt in $TEAM: what everyone on the team gets."
 fi
 if [ -n "$REPO" ] && [ ! -e "$TEAM/README.md" ]; then   # what the repo is, for whoever opens it
   url=$(git -C "$AGENTFILES" remote get-url origin 2>/dev/null | sed -e 's|^git@\([^:]*\):|https://\1/|' -e 's|\.git$||' || true)
   origin=$(git -C "$TEAM" remote get-url origin 2>/dev/null || echo "<this repo's clone URL>")
   sed -e "s|{{folder}}|$(basename "$TEAM")|g" -e "s|{{agentfiles}}|${url:-https://github.com/tsterker/agentfiles}|g" -e "s|{{origin}}|$origin|g" \
-    "$AGENTFILES/bin/templates/README.md" > "$TEAM/README.md"
+    "$AGENTFILES/scaffolding/README.md" > "$TEAM/README.md"
   welcome="${welcome:+$welcome
   }Created README.md in $TEAM: what this repo is and how to set it up."
 fi
@@ -76,7 +76,7 @@ MINE= OWN=shared/agentfiles.txt   # without a me, sync gets shared/ only
 [ -z "$ME" ] || MINE=$TEAM/people/$ME OWN=people/$ME/agentfiles.txt
 if [ -n "$ME" ] && [ ! -d "$MINE" ]; then
   [ -n "$ASKED" ] || die "expected your folder people/$ME/ in $TEAM; it's missing. Run bin/sync --me $ME to create it"
-  mkdir -p "$TEAM/people" && cp -R "$AGENTFILES/bin/templates/person" "$MINE"
+  mkdir -p "$TEAM/people" && cp -R "$AGENTFILES/scaffolding/person" "$MINE"
   find "$MINE" -type f -exec sed -i '' "s/{{me}}/$ME/g" {} +
   welcome="${welcome:+$welcome
   }Created people/$ME/. Make rules/me.md yours: add the names you go by."
@@ -202,7 +202,7 @@ read_source() {   # read_source <folder> <label> <followed 0|1> [skill|person]
 OFF_PRESETS=$( { lines "$TEAM/shared/agentfiles.txt"; [ -z "$ME" ] || lines "$MINE/agentfiles.txt"; } | awk '$1 == "off" && $2 == "preset" {print $3}' | sort -u)
 read_source "$TEAM/shared" shared 0
 [ -z "$ME" ] || read_source "$MINE" "people/$ME" 0
-read_source "$AGENTFILES/bin/skills/agentfiles" core 0 skill   # the core, which nobody turns off
+read_source "$AGENTFILES/core/skills/agentfiles" core 0 skill   # the core, which nobody turns off
 
 # --- Off: check my own lines, then drop what's off -----------------------------
 offs() { awk -F"$TAB" -v k="$1" '$1 == k {print $2}' "$OFFS" | sort -u; }
