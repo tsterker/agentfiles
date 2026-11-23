@@ -19,39 +19,48 @@ The other terms are in [GLOSSARY.md](GLOSSARY.md); why it's a tool and not a for
 
 ## Layout
 
+**Your team repo**, your own git project, is where you work:
+
 ```
-agentfiles (this repo; pull it, never edit it)
-  bin/init, bin/sync, bin/probe
-  core/                          the agentfiles skill and rule: everyone gets them
-  scaffolding/                   what init and sync create in a team repo
-  templates/starter/             a first set of skills and rules, copied once by bin/init --template
-  CHANGELOG.md                   what each release changes, and what a team repo must change
+shared/                    everyone gets this; changes are agreed with the team
+people/<you>/              yours; change it without asking the team
+```
 
-your team repo (your own git project)
-  shared/                        everyone gets this; changes are agreed with the team
-  people/<you>/                  yours; change it without asking the team
+Each of `shared/` and `people/<x>/` is a source:
 
-each of shared/ and people/<x>/ (a source):
-  agentfiles.txt                 what this source uses, turns off and keeps
-  skills/…/<name>/SKILL.md       hand-made skills, grouped in subfolders as you like
-  rules/*.md                     rules: every markdown file, taken as it is
-  init/*.sh                      setup links can't do; run on every sync
+```
+agentfiles.txt             what this source uses, turns off and keeps
+skills/…/<name>/SKILL.md   hand-made skills, grouped in subfolders as you like
+rules/*.md                 rules: every markdown file, taken as it is
+init/*.sh                  setup links can't do; run on every sync
+```
+
+**The agentfiles repo** is the tool; you pull it and never edit it:
+
+```
+bin/init, bin/sync, bin/probe
+core/                      the agentfiles skill and rule: everyone gets them
+scaffolding/               what init and sync create in a team repo
+templates/starter/         a first set of skills and rules, copied once by bin/init --template
+CHANGELOG.md               what each release changes, and what a team repo must change
 ```
 
 ## agentfiles.txt
 
 Every line is `<verb> <kind> <what>`; everything after a `#` is skipped. Line order doesn't matter, and `off` always wins wherever it sits, except against the core. Every name must be unique across what you get: sync stops on a clash naming both, and `off` drops every skill or rule of that name, so a replacement for one you turn off needs a new name. Starting your own with your name (`tim-foo`) avoids most clashes.
 
-```
-format v2                                   the file's format; sync stops on any other (CHANGELOG.md)
-use    person ana                           a colleague's skills and rules; their own lines and init scripts stay theirs
-use    skill  ana-review                    one skill from a colleague's folder
-use    folder ~/projects/my-skills          a folder on your disk, linked live
-use    git    https://github.com/o/r/tree/v1.3.2/skills    a tag or full commit, fetched once into ~/.cache/agentfiles
-follow git    https://github.com/o/r/tree/main/skills      a branch, fetched on every sync
-off    skill  grilling                      also: off rule <name>, off init <file>.sh
-keep   my-app                               a name another tool installs in the folders sync owns
-```
+| Line | What it does |
+|---|---|
+| `format v2` | the file's format; sync stops on any other ([CHANGELOG.md](CHANGELOG.md)) |
+| `use person ana` | a colleague's skills and rules; their own lines and init scripts stay theirs |
+| `use skill ana-review` | one skill from a colleague's folder |
+| `use folder ~/my-skills` | a folder on your disk, linked live |
+| `use git https://github.com/o/r/tree/v1.3.2/skills` | a tag or full commit, fetched once into `~/.cache/agentfiles` |
+| `follow git https://github.com/o/r/tree/main/skills` | a branch, fetched on every sync |
+| `off skill grilling` | drops a skill; also `off rule <name>`, `off init <file>.sh` |
+| `keep my-app` | a name another tool installs in the folders sync owns |
+
+In action: the starter template's [agentfiles.txt](templates/starter/agentfiles.txt), and the [one each person starts with](scaffolding/person/agentfiles.txt), which lists every form as a comment.
 
 A folder or git source uses other sources the same way, read once each. A `git` source is a repo, or a `/tree/<ref>/<path>` (GitLab: `/-/tree/`) link copied from the browser; a ref containing `/` isn't supported. Nothing from git is committed: to own a skill's text, copy it into your folder under a new name.
 
@@ -64,7 +73,7 @@ Clone agentfiles first.
 **Create a team repo**, once, by one person: create an empty git project for the team, clone it, then
 
 ```sh
-bin/init ~/projects/agentfiles-<team> --template starter
+bin/init <path to the team repo> --template starter
 ```
 
 It creates `shared/agentfiles.txt`, a `README.md` saying what the repo is and how to join, and, with `--template starter`, copies in [templates/starter/](templates/starter/): a first set of skills (`use git` lines) and rules. Those files are the team's from then on: read each, change or delete what you don't agree with, and nothing links them back to the template. Leave out `--template` to start empty. Commit and push the team repo, then join it like everyone else.
@@ -72,7 +81,7 @@ It creates `shared/agentfiles.txt`, a `README.md` saying what the repo is and ho
 **Join a team repo**: clone it, then run once
 
 ```sh
-bin/sync --repo ~/projects/agentfiles-<team> --me <name>
+bin/sync --repo <path to the team repo> --me <name>
 ```
 
 It remembers both, and creates `people/<name>/` with an `agentfiles.txt` listing the forms and a rule, `rules/me.md`, that tells your agent who you are. Make that rule yours: add the names you go by in tickets and chat, and anything else your agent should know about you. Commit and push the team repo. Leave out `--me` to get `shared/` only; a later `bin/sync --me <name>` adds your folder.

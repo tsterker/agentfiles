@@ -34,7 +34,8 @@ if [ ! -e "$TEAM/README.md" ]; then   # what the repo is, for whoever opens it
   made="$made README.md"
   url=$(git -C "$AGENTFILES" remote get-url origin 2>/dev/null | sed -e 's|^git@\([^:]*\):|https://\1/|' -e 's|\.git$||' || true)
   origin=$(git -C "$TEAM" remote get-url origin 2>/dev/null || echo "<this repo's clone URL>")
-  sed -e "s|{{folder}}|$(basename "$TEAM")|g" -e "s|{{agentfiles}}|${url:-https://github.com/tsterker/agentfiles}|g" -e "s|{{origin}}|$origin|g" \
+  clone=$(basename "$TEAM"); case $origin in *[/:]*) clone=$(basename "$origin" .git) ;; esac   # the folder git clone makes
+  sed -e "s|{{clone}}|$clone|g" -e "s|{{agentfiles}}|${url:-https://github.com/tsterker/agentfiles}|g" -e "s|{{origin}}|$origin|g" \
     "$AGENTFILES/scaffolding/README.md" > "$TEAM/README.md"
 fi
 

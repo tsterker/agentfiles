@@ -1,13 +1,15 @@
-# {{folder}}
+# {{clone}}
 
 The skills and rules our coding agents share (Claude Code, Codex, Cursor, OpenCode). This repo is ours to change; [agentfiles]({{agentfiles}}) is the tool that puts it in place on each machine, which we pull and never edit.
 
 ## Set up
 
+In any folder you keep projects in:
+
 ```sh
-git clone {{agentfiles}}.git ~/projects/agentfiles
-git clone {{origin}} ~/projects/{{folder}}
-~/projects/agentfiles/bin/sync --repo ~/projects/{{folder}} --me <your name>
+git clone {{agentfiles}}.git
+git clone {{origin}}
+agentfiles/bin/sync --repo {{clone}} --me <your name>
 ```
 
 `--me` creates your own folder in `people/`; leave it out to get `shared/` only. After every pull of either repo, run `bin/sync` again and start a new chat. Or ask your agent to "update agentfiles".
